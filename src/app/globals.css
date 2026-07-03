@@ -1,0 +1,278 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-grotesk);
+  --font-display: var(--font-serif);
+  --font-mono: var(--font-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  /* Reflix brand tokens — modernized */
+  --color-glow: var(--glow);
+  --color-glow-soft: var(--glow-soft);
+  --color-coral: var(--coral);
+  --color-bone: var(--bone);
+  --color-ash: var(--ash);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-hairline: var(--hairline);
+  --color-oxblood: var(--oxblood);
+}
+
+/*
+  Reflix — modernized midnight cinema palette.
+  Deep cool charcoal base (cleaner than the old warm browns) with a luminous
+  amber accent that pops harder against the cool dark, plus a coral secondary
+  for modern energy. No .dark toggle needed — :root IS the cinema palette.
+*/
+:root {
+  --radius: 0.625rem;
+
+  /* Brand primitives — cool charcoal + luminous amber + coral */
+  --ink: #08090d;        /* deep midnight charcoal, slight cool undertone */
+  --ink-2: #111219;      /* raised surface */
+  --ink-3: #1a1c26;      /* elevated surface / hover */
+  --hairline: #262834;   /* cool gray divider */
+  --glow: #ffb020;       /* luminous gold — brighter, more saturated amber */
+  --glow-soft: #ffcd5c;  /* warm gold highlight */
+  --coral: #ff5e5b;      /* modern coral secondary accent */
+  --bone: #f5f5f7;       /* crisp primary text */
+  --ash: #8b8e9a;        /* cool muted gray */
+  --oxblood: #e5484d;    /* cleaner red for danger */
+
+  /* shadcn semantic mapping */
+  --background: var(--ink);
+  --foreground: var(--bone);
+  --card: var(--ink-2);
+  --card-foreground: var(--bone);
+  --popover: var(--ink-2);
+  --popover-foreground: var(--bone);
+  --primary: var(--glow);
+  --primary-foreground: var(--ink);
+  --secondary: var(--ink-3);
+  --secondary-foreground: var(--bone);
+  --muted: var(--ink-3);
+  --muted-foreground: var(--ash);
+  --accent: #1f2130;
+  --accent-foreground: var(--bone);
+  --destructive: var(--oxblood);
+  --border: var(--hairline);
+  --input: var(--hairline);
+  --ring: var(--glow);
+  --chart-1: var(--glow);
+  --chart-2: var(--coral);
+  --chart-3: #6b7280;
+  --chart-4: #4b5563;
+  --chart-5: var(--oxblood);
+  --sidebar: var(--ink-2);
+  --sidebar-foreground: var(--bone);
+  --sidebar-primary: var(--glow);
+  --sidebar-primary-foreground: var(--ink);
+  --sidebar-accent: var(--ink-3);
+  --sidebar-accent-foreground: var(--bone);
+  --sidebar-border: var(--hairline);
+  --sidebar-ring: var(--glow);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "ss01", "cv01";
+    /* subtle ambient gradient on the whole page for depth */
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(255, 176, 32, 0.06), transparent),
+      radial-gradient(ellipse 60% 40% at 100% 100%, rgba(255, 94, 91, 0.04), transparent);
+    background-attachment: fixed;
+  }
+  ::selection {
+    background: var(--glow);
+    color: var(--ink);
+  }
+}
+
+/* ---------- Reflix custom utilities ---------- */
+
+/* Horizontal reel scroller with no visible scrollbar */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Custom scrollbar for panels — thin, glowing on hover */
+.rfx-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--hairline) transparent;
+}
+.rfx-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.rfx-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.rfx-scroll::-webkit-scrollbar-thumb {
+  background: var(--hairline);
+  border-radius: 999px;
+  transition: background 0.2s;
+}
+.rfx-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--glow);
+}
+
+/* Film-grain overlay — lighter and more refined */
+.film-grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0.08;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 160px 160px;
+  animation: grain-shift 0.8s steps(3) infinite;
+}
+@keyframes grain-shift {
+  0% { transform: translate(0, 0); }
+  33% { transform: translate(-4px, 3px); }
+  66% { transform: translate(3px, -2px); }
+  100% { transform: translate(0, 0); }
+}
+
+/* Projector vignette — refined for the cooler base */
+.projector-vignette::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background:
+    radial-gradient(120% 80% at 50% 30%, transparent 40%, rgba(8, 9, 13, 0.6) 100%),
+    linear-gradient(180deg, rgba(8, 9, 13, 0.4) 0%, transparent 30%, rgba(8, 9, 13, 0.95) 100%);
+}
+
+/* Glassmorphism — for header and floating elements */
+.glass {
+  background: rgba(8, 9, 13, 0.7);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Glow shadow — for accent buttons and active cards */
+.glow-shadow {
+  box-shadow: 0 0 0 1px rgba(255, 176, 32, 0.2), 0 8px 32px -8px rgba(255, 176, 32, 0.3);
+}
+.glow-shadow-hover:hover {
+  box-shadow: 0 0 0 1px rgba(255, 176, 32, 0.4), 0 12px 40px -8px rgba(255, 176, 32, 0.45);
+}
+
+/* Card lift — modern subtle elevation on hover */
+.card-lift {
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease;
+}
+.card-lift:hover {
+  transform: translateY(-4px);
+}
+
+/* Gradient text — for accent headlines */
+.gradient-text {
+  background: linear-gradient(135deg, var(--bone) 0%, var(--glow-soft) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Sprocket-hole strip — the signature divider, refined */
+.sprocket-strip {
+  background-image:
+    linear-gradient(90deg, var(--hairline) 0 100%),
+    repeating-linear-gradient(
+      90deg,
+      var(--ink) 0 10px,
+      transparent 10px 22px
+    );
+  background-size: 100% 1px, 100% 100%;
+  background-position: center, center;
+  background-repeat: no-repeat;
+}
+
+/* Subtle marquee bulbs pulse for the "NOW SHOWING" tag */
+@keyframes bulb-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 8px 1px var(--glow); }
+  50% { opacity: 0.4; box-shadow: 0 0 3px 0 var(--glow); }
+}
+.bulb {
+  animation: bulb-pulse 2.4s ease-in-out infinite;
+}
+.bulb:nth-child(2) { animation-delay: 0.4s; }
+.bulb:nth-child(3) { animation-delay: 0.8s; }
+
+/* Smooth fade-in for content */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.fade-up {
+  animation: fade-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.text-balance {
+  text-wrap: balance;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .film-grain::after { animation: none; }
+  .bulb { animation: none; }
+  .card-lift { transition: none; }
+  .card-lift:hover { transform: none; }
+  .fade-up { animation: none; }
+  html { scroll-behavior: auto; }
+}
