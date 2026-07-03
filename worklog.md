@@ -375,3 +375,19 @@ Stage Summary:
 - The player now supports both direct video files (.mp4, .webm, etc.) and embed URLs (YouTube, Vimeo, or any embed service). It auto-detects the URL type and renders the appropriate element. The top bar (title + close) shows for both; native controls (seek, volume, etc.) only show for direct video since embeds have their own.
 - The TMDB ID extraction + bulk import logic is untouched — paste embed URLs with the TMDB ID at the end (e.g. https://your-embed-service.com/embed/movie/280) and the system extracts 280, matches to Terminator 2, and stores the full URL. Bulk upload works with embed URLs identically to direct video URLs.
 - toEmbedUrl handles: YouTube watch → embed, YouTube short → embed, Vimeo → player embed, any /embed/ URL → as-is, any other URL → as-is (assumed to be a generic embed).
+
+---
+Task ID: 50
+Agent: main (Z.ai Code)
+Task: Remove the admin password from the autofill/quick-fill buttons on the auth modal and footer.
+
+Work Log:
+- Removed the "Demo access" section from the auth modal — the two quick-fill buttons ("Curator" that auto-filled admin@reflix.com / reflix-admin, and "Member" that auto-filled viewer@reflix.com / reflix-viewer) are gone. Users now type their email and password manually.
+- Removed the quickFill() function that powered those buttons.
+- Removed the unused Film icon import from the auth modal.
+- Updated the footer: removed the "Curator access" and "Member access" blocks that displayed admin@reflix.com / reflix-admin and viewer@reflix.com / reflix-viewer. Replaced with a simple "Account → Sign in" link that opens the auth modal without revealing any credentials.
+- Updated the footer's tech line from "Data layer ready for Supabase" to "Supabase" (since it's now deployed on Supabase).
+- Verified via Agent Browser: no demo credentials, emails, or passwords appear anywhere in the auth modal or footer. Lint clean.
+
+Stage Summary:
+- The admin password is no longer exposed in the UI. The sign-in modal is a clean email/password form with no quick-fill buttons. The footer no longer displays any credentials. The only place the seeded admin password exists is in the prisma/seed.ts file (in the repo) — which should still be changed before going public.

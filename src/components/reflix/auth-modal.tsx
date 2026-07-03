@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, Film } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -63,18 +63,6 @@ export function AuthModal() {
         }
       );
     }
-  };
-
-  const quickFill = (kind: "admin" | "viewer") => {
-    setTab("signin");
-    if (kind === "admin") {
-      setEmail("admin@reflix.com");
-      setPassword("reflix-admin");
-    } else {
-      setEmail("viewer@reflix.com");
-      setPassword("reflix-viewer");
-    }
-    setError(null);
   };
 
   return (
@@ -178,30 +166,6 @@ export function AuthModal() {
             </form>
           </Tabs>
 
-          {/* demo credentials */}
-          <div className="mt-6 border-t border-hairline pt-4">
-            <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.2em] text-ash">
-              Demo access
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={() => quickFill("admin")}
-                className="rounded-md border border-hairline bg-ink px-3 py-2 text-left transition-colors hover:border-glow/40"
-              >
-                <div className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.15em] text-glow-soft">
-                  <Film className="h-3 w-3" /> Curator
-                </div>
-                <div className="mt-1 truncate font-mono text-[11px] text-bone/70">admin@reflix.com</div>
-              </button>
-              <button
-                onClick={() => quickFill("viewer")}
-                className="rounded-md border border-hairline bg-ink px-3 py-2 text-left transition-colors hover:border-glow/40"
-              >
-                <div className="font-mono text-[10px] uppercase tracking-[0.15em] text-ash">Member</div>
-                <div className="mt-1 truncate font-mono text-[11px] text-bone/70">viewer@reflix.com</div>
-              </button>
-            </div>
-          </div>
         </div>
       </DialogContent>
     </Dialog>

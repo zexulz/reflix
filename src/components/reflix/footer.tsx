@@ -23,41 +23,24 @@ export function Footer() {
             </p>
           </div>
 
-          {/* demo credentials */}
-          <div className="grid grid-cols-2 gap-6 sm:grid-cols-2">
-            <div>
-              <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-ash">
-                Curator access
-              </div>
-              <button
-                onClick={() => openAuth("signin")}
-                className="mt-2 block font-mono text-xs text-bone/80 transition-colors hover:text-glow-soft"
-              >
-                admin@reflix.com
-                <br />
-                <span className="text-ash">reflix-admin</span>
-              </button>
+          {/* account */}
+          <div>
+            <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-ash">
+              Account
             </div>
-            <div>
-              <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-ash">
-                Member access
-              </div>
-              <button
-                onClick={() => openAuth("signin")}
-                className="mt-2 block font-mono text-xs text-bone/80 transition-colors hover:text-glow-soft"
-              >
-                viewer@reflix.com
-                <br />
-                <span className="text-ash">reflix-viewer</span>
-              </button>
-            </div>
+            <button
+              onClick={() => openAuth("signin")}
+              className="mt-2 block font-mono text-xs text-bone/80 transition-colors hover:text-glow-soft"
+            >
+              Sign in
+            </button>
           </div>
         </div>
 
         <div className="mt-10 flex flex-col items-start justify-between gap-3 border-t border-hairline pt-6 font-mono text-[10px] uppercase tracking-[0.2em] text-ash sm:flex-row sm:items-center">
           <span>© {new Date().getFullYear()} Reflix — Reel 00 / Colophon</span>
           <span className="text-ash/70">
-            Built on Next.js · Prisma · Data layer ready for Supabase
+            Built on Next.js · Prisma · Supabase
           </span>
         </div>
       </div>
