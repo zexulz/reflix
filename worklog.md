@@ -391,20 +391,3 @@ Work Log:
 
 Stage Summary:
 - The admin password is no longer exposed in the UI. The sign-in modal is a clean email/password form with no quick-fill buttons. The footer no longer displays any credentials. The only place the seeded admin password exists is in the prisma/seed.ts file (in the repo) — which should still be changed before going public.
-
----
-Task ID: 51-54
-Agent: main (Z.ai Code)
-Task: Add Marvel, DC, Pixar, and Disney collection reels without re-adding any movies or re-pasting any URLs.
-
-Work Log:
-- Fetched Pixar (production company ID 3) and Disney (production company ID 2) TMDB IDs from TMDB's discover API. Already had Marvel + DC IDs from the earlier fetch.
-- Created src/lib/collections.ts — exports a COLLECTIONS array with 4 entries (Marvel, DC, Pixar, Disney), each mapping to a set of TMDB IDs. Easy to edit/add more studios later.
-- Updated src/app/page.tsx to import COLLECTIONS and add collection reels to the browse page. Each collection filters your existing movies by tmdbId — if a movie's tmdbId is in the collection's ID set, it shows up in that collection's reel. Sorted by year descending (newest first). Only shows collections that have at least 1 matching movie in your catalog.
-- The collections appear between the decade reels and the "Full Catalog" reel.
-- Verified: all 4 collections (Marvel, DC, Pixar, Disney) appear in the browser with movies from the existing catalog. No existing video URLs were touched — confirmed 5,842/5,875 movies still have their stream URLs intact. Lint clean.
-
-Stage Summary:
-- Four new collection reels added: Marvel, DC, Pixar, Disney. They pull from your existing catalog by TMDB ID — zero re-adding, zero re-pasting. Any movie you've already added (or will add in the future) whose TMDB ID matches a collection automatically appears in that collection's reel.
-- The collections are config-driven (src/lib/collections.ts) — to add more studios or films, just edit the arrays. No code changes needed for future additions.
-- Existing movies, video URLs, artwork, and all other features are completely untouched.
