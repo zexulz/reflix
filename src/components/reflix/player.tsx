@@ -17,6 +17,31 @@ import { useProgress, useSaveProgress } from "@/lib/hooks";
 import { formatTime } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
+/*
+  toEmbedUrl — converts common video URLs to their embeddable form so they
+  work inside an <iframe>. Handles:
+    - YouTube watch URLs (youtube.com/watch?v=ID) → youtube.com/embed/ID
+    - YouTube short URLs (youtu.be/ID) → youtube.com/embed/ID
+    - Vimeo URLs (vimeo.com/ID) → player.vimeo.com/video/ID
+    - Any URL already containing "/embed/" → used as-is
+    - Direct video files (.mp4, .webm, etc.) → returned as-is (native <video>)
+    - Everything else → returned as-is (assumed to be a generic embed URL)
+*/
+function toEmbedUrl(url: string): string {
+  if (!url) return "";
+  // already an embed URL — use as-is
+  if (url.includes("/embed/")) return url;
+  // YouTube watch URL
+  const ytWatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{11})/);
+  if (ytWatch) return `https://www.youtube.com/embed/${ytWatch[1]}?autoplay=1&rel=0&modestbranding=1`;
+  // Vimeo
+  const vimeo = url.match(/vimeo\.com\/(\d+)/);
+  if (vimeo) return `https://player.vimeo.com/video/${vimeo[1]}?autoplay=1`;
+  // everything else — assume it's a generic embed URL (the embed service
+  // handles its own player)
+  return url;
+}
+
 export function Player() {
   const movie = useApp((s) => s.playingMovie);
   const stop = useApp((s) => s.stop);
@@ -176,6 +201,12 @@ export function Player() {
   // crash: the film is cataloged and browseable, playback is waiting on a URL.
   const noStream = !movie.videoUrl;
 
+  // Detect whether the URL is a direct video file (use native <video>) or an
+  // embed URL (use <iframe> — for YouTube, Vimeo, or any embed service).
+  const rawUrl = movie.videoUrl || "";
+  const isDirectVideo = /\.(mp4|webm|m4v|ogg|ogv|m3u8|mov)(\?|#|$)/i.test(rawUrl);
+  const embedUrl = toEmbedUrl(rawUrl);
+
   return (
     <div
       ref={containerRef}
@@ -192,33 +223,48 @@ export function Player() {
         }
       }}
     >
-      <video
-        ref={videoRef}
-        src={movie.videoUrl || undefined}
-        autoPlay
-        playsInline
-        // suppress the browser's download / cast / picture-in-picture controls
-        // and the right-click menu so playback is a clean, contained experience
-        controlsList="nodownload noplaybackrate noremoteplayback nofullscreen"
-        disablePictureInPicture
-        disableRemotePlayback
-        className="absolute inset-0 h-full w-full bg-ink"
-        onClick={togglePlay}
-        onContextMenu={(e) => e.preventDefault()}
-        onLoadedMetadata={onLoadedMeta}
-        onPlay={() => setPlaying(true)}
-        onPause={() => setPlaying(false)}
-        onTimeUpdate={(e) => {
-          setCurrent((e.target as HTMLVideoElement).currentTime);
-          maybeSave(false);
-        }}
-        onEnded={() => {
-          setPlaying(false);
-          setFinished(true);
-          maybeSave(true);
-        }}
-        onError={() => setVideoError(true)}
-      />
+      {/* native <video> for direct video files (.mp4, .webm, etc.) */}
+      {isDirectVideo && (
+        <video
+          ref={videoRef}
+          src={movie.videoUrl || undefined}
+          autoPlay
+          playsInline
+          controlsList="nodownload noplaybackrate noremoteplayback nofullscreen"
+          disablePictureInPicture
+          disableRemotePlayback
+          className="absolute inset-0 h-full w-full bg-ink"
+          onClick={togglePlay}
+          onContextMenu={(e) => e.preventDefault()}
+          onLoadedMetadata={onLoadedMeta}
+          onPlay={() => setPlaying(true)}
+          onPause={() => setPlaying(false)}
+          onTimeUpdate={(e) => {
+            setCurrent((e.target as HTMLVideoElement).currentTime);
+            maybeSave(false);
+          }}
+          onEnded={() => {
+            setPlaying(false);
+            setFinished(true);
+            maybeSave(true);
+          }}
+          onError={() => setVideoError(true)}
+        />
+      )}
+
+      {/* <iframe> for embed URLs (YouTube, Vimeo, generic embed services) */}
+      {!isDirectVideo && !noStream && (
+        <iframe
+          src={embedUrl}
+          title={movie.title}
+          className="absolute inset-0 h-full w-full bg-ink"
+          frameBorder="0"
+          allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
+          allowFullScreen
+          referrerPolicy="origin"
+          onLoad={() => setPlaying(true)}
+        />
+      )}
 
       {/* no stream attached yet — the curator hasn't pasted a licensed URL */}
       {noStream && (
@@ -268,8 +314,9 @@ export function Player() {
         </div>
       )}
 
-      {/* stream unavailable — a URL was attached but couldn't be reached */}
-      {videoError && !noStream && (
+      {/* stream unavailable — a direct video URL was attached but couldn't be
+          reached (iframes handle their own errors internally) */}
+      {videoError && !noStream && isDirectVideo && (
         <div className="absolute inset-0 z-[5] flex flex-col items-center justify-center gap-5 bg-ink px-6 text-center">
           {movie.backdropUrl && (
             <img
@@ -327,8 +374,8 @@ export function Player() {
         </button>
       </div>
 
-      {/* center play/pause when paused */}
-      {!playing && !finished && !videoError && (
+      {/* center play/pause when paused — only for native video */}
+      {!playing && !finished && !videoError && isDirectVideo && (
         <button
           onClick={togglePlay}
           aria-label="Play"
@@ -367,8 +414,8 @@ export function Player() {
         </div>
       )}
 
-      {/* bottom controls */}
-      {!videoError && (
+      {/* bottom controls — only for native video (iframes have their own) */}
+      {!videoError && isDirectVideo && (
       <div
         className={cn(
           "absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-ink/95 to-transparent px-4 pb-4 pt-10 transition-opacity duration-300 sm:px-8",

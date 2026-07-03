@@ -79,13 +79,14 @@ export function BulkImport() {
           <p className="font-sans text-sm leading-relaxed text-ash">
             Paste your stream URLs — one per line. The system extracts the TMDB
             ID (the trailing number) from each URL and matches it to the right
-            film. The URL is stored as-is, never inspected.
+            film. Works with direct video files (`.mp4`) and embed URLs (YouTube,
+            Vimeo, or any embed service). The URL is stored as-is, never inspected.
           </p>
 
           <div className="rounded-md border border-hairline bg-ink p-3 font-mono text-[11px] leading-relaxed text-ash">
-            <div className="mb-1 text-glow-soft"># just paste your URLs — TMDB ID is the trailing number</div>
+            <div className="mb-1 text-glow-soft"># direct video files OR embed URLs both work</div>
             https://your-host.com/278<br />
-            https://your-host.com/238<br />
+            https://your-host.com/embed/movie/238<br />
             https://your-host.com/155
           </div>
 

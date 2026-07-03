@@ -213,18 +213,20 @@ function FormBody({
 
           {/* video url — the licensed stream slot. Optional: the film is
               cataloged and browseable without it; the player shows a
-              "no stream attached" state until a URL is pasted here. */}
-          <Field label="Licensed stream URL">
+              "no stream attached" state until a URL is pasted here.
+              Works with direct video files (.mp4) AND embed URLs (YouTube,
+              Vimeo, or any embed service). */}
+          <Field label="Stream URL (video file or embed)">
             <Input
               value={form.videoUrl || ""}
               onChange={(e) => set("videoUrl", e.target.value)}
-              placeholder="https://your-storage.com/films/title.mp4"
+              placeholder="https://your-host.com/278 or https://your-embed.com/movie/278"
               className="border-hairline bg-ink font-mono text-sm text-bone placeholder:text-ash/50 focus-visible:ring-glow/40"
             />
             <p className="mt-1.5 font-sans text-[11px] leading-relaxed text-ash">
-              Paste the link to your licensed, self-hosted video file. Leave empty
-              until you have one — the film stays in the catalog and the player
-              waits for a stream.
+              Paste a direct video file URL (`.mp4`, `.webm`) or an embed URL
+              (YouTube, Vimeo, or any embed service). Leave empty until you have
+              one — the film stays in the catalog and the player waits for a stream.
             </p>
           </Field>
 

@@ -355,3 +355,23 @@ Stage Summary:
 - Supabase database now stores TMDB CDN URLs for all artwork (posters + backdrops). The live Vercel site will load artwork directly from TMDB's fast CDN — no local image files needed, no 285MB repo.
 - The slim ZIP (reflix-slim.zip) is ready for GitHub upload: 280KB, 149 files, 22 top-level items (fits in one GitHub web upload).
 - Deployment path: upload slim zip to GitHub → connect Vercel → add 6 env vars → deploy. Artwork, database, and all features work immediately on the live site.
+
+---
+Task ID: 46-49
+Agent: main (Z.ai Code)
+Task: Update the player to support iframe embeds (YouTube, Vimeo, generic embed services) alongside native video, keeping all TMDB ID extraction + bulk import logic intact.
+
+Work Log:
+- Added toEmbedUrl() helper to the Player component — converts YouTube watch URLs (youtube.com/watch?v=ID, youtu.be/ID) to embed URLs, Vimeo URLs to player.vimeo.com/video/ID, and passes through any URL already containing "/embed/" or any other URL as-is.
+- Added URL type detection: if the URL ends in .mp4/.webm/.m4v/.ogg/.ogv/.m3u8/.mov, the player renders a native <video> element; otherwise it renders an <iframe> with allow="autoplay; fullscreen; picture-in-picture; encrypted-media".
+- Updated the player's conditional rendering: native <video> only shows for direct video files; <iframe> only shows for embed URLs (when a videoUrl is attached). The "no stream attached" state still shows when videoUrl is null. The "stream unavailable" state only triggers for native video (iframes handle their own errors). The bottom controls (seek bar, play/pause, volume, fullscreen) only show for native video (iframes have their own controls). The center play/pause button only shows for native video.
+- The top bar (title + close button) shows for both modes. Context menu is disabled on both.
+- The bulk import TMDB ID extraction logic is COMPLETELY UNCHANGED — it still reads the trailing number from any URL (including embed URLs like https://host.com/embed/movie/280) and matches to the movie, auto-creating if needed. Embed URLs work identically to direct video URLs in the bulk import.
+- Updated the bulk import UI help text to mention both direct video files and embed URLs work.
+- Updated the movie form's "Licensed stream URL" field label to "Stream URL (video file or embed)" with updated helper text.
+- Verified: YouTube URL → iframe renders (accessibility tree confirms Iframe element). Direct .mp4 URL → native video renders. No-stream state still works. Lint clean.
+
+Stage Summary:
+- The player now supports both direct video files (.mp4, .webm, etc.) and embed URLs (YouTube, Vimeo, or any embed service). It auto-detects the URL type and renders the appropriate element. The top bar (title + close) shows for both; native controls (seek, volume, etc.) only show for direct video since embeds have their own.
+- The TMDB ID extraction + bulk import logic is untouched — paste embed URLs with the TMDB ID at the end (e.g. https://your-embed-service.com/embed/movie/280) and the system extracts 280, matches to Terminator 2, and stores the full URL. Bulk upload works with embed URLs identically to direct video URLs.
+- toEmbedUrl handles: YouTube watch → embed, YouTube short → embed, Vimeo → player embed, any /embed/ URL → as-is, any other URL → as-is (assumed to be a generic embed).
