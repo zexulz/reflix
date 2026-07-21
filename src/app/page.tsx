@@ -9,6 +9,8 @@ import { Hero } from "@/components/reflix/hero";
 import { Reel } from "@/components/reflix/reel";
 import { LazyReel } from "@/components/reflix/lazy-reel";
 import { Footer } from "@/components/reflix/footer";
+import { LanguageGate } from "@/components/reflix/language-gate";
+import { useLanguage } from "@/lib/lang-store";
 import { COLLECTIONS } from "@/lib/collections";
 import { MovieDetailModal } from "@/components/reflix/movie-detail-modal";
 import { AuthModal } from "@/components/reflix/auth-modal";
@@ -56,39 +58,43 @@ function App() {
 
   if (view === "admin") {
     return (
-      <div className="flex min-h-screen flex-col bg-background">
-        <Header />
-        <main className="flex-1">
-          <AdminDashboard />
-        </main>
-        <Footer />
-        <AuthModal />
-        <MovieDetailModal />
-      </div>
+      <LanguageGate>
+        <div className="flex min-h-screen flex-col bg-background">
+          <Header />
+          <main className="flex-1">
+            <AdminDashboard />
+          </main>
+          <Footer />
+          <AuthModal />
+          <MovieDetailModal />
+        </div>
+      </LanguageGate>
     );
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
-      <Header />
-      <main className="flex-1">
-        {search ? (
-          <SearchResults movies={movies} query={search} />
-        ) : (
-          <Browse
-            movies={movies}
-            user={user}
-            myList={myList}
-            progressMap={progressMap}
-            onSignIn={() => openAuth("signin")}
-          />
-        )}
-      </main>
-      <Footer />
-      <MovieDetailModal />
-      <AuthModal />
-      {playingMovie && <Player />}
-    </div>
+    <LanguageGate>
+      <div className="flex min-h-screen flex-col bg-background">
+        <Header />
+        <main className="flex-1">
+          {search ? (
+            <SearchResults movies={movies} query={search} />
+          ) : (
+            <Browse
+              movies={movies}
+              user={user}
+              myList={myList}
+              progressMap={progressMap}
+              onSignIn={() => openAuth("signin")}
+            />
+          )}
+        </main>
+        <Footer />
+        <MovieDetailModal />
+        <AuthModal />
+        {playingMovie && <Player />}
+      </div>
+    </LanguageGate>
   );
 }
 
@@ -106,6 +112,8 @@ function Browse({
   onSignIn: () => void;
 }) {
   // build the program of reels — a real sequence, so REEL numbering is truthful
+  const t = useLanguage((s) => s.t);
+  const tg = useLanguage((s) => s.tg);
   const reels: {
     id: string;
     title: string;
@@ -115,7 +123,6 @@ function Browse({
   }[] = [];
 
   // Popularity sort: newer + higher-rated films first.
-  // Score = rating * (1 + recency_bonus) where recency_bonus gives newer films a boost.
   const byPopularity = (a: Movie, b: Movie) => {
     const score = (m: Movie) => {
       const recency = m.year >= 2023 ? 3 : m.year >= 2020 ? 2 : m.year >= 2015 ? 1 : 0;
@@ -124,13 +131,16 @@ function Browse({
     return score(b) - score(a);
   };
 
+  // Filter out short movies (< 40 min) — they clutter the reels
+  const fullLengthMovies = movies.filter((m) => m.duration >= 40 || m.duration === 0);
+
   const continueMovies = movies.filter(
     (m) => progressMap[m.id] && progressMap[m.id].duration > 0
   );
   if (user && continueMovies.length > 0) {
     reels.push({
       id: "reel-continue",
-      title: "Continue Watching",
+      title: t("reel.continueWatching"),
       items: continueMovies.sort(
         (a, b) =>
           (progressMap[b.id]?.position ?? 0) - (progressMap[a.id]?.position ?? 0)
@@ -140,32 +150,32 @@ function Browse({
   }
 
   // Trending Now — the most popular recent films across the whole catalog
-  const trending = [...movies].sort(byPopularity).slice(0, 25);
-  reels.push({ id: "reel-trending", title: "Trending Now", items: trending });
+  const trending = [...fullLengthMovies].sort(byPopularity).slice(0, 25);
+  reels.push({ id: "reel-trending", title: t("reel.trending"), items: trending });
 
   // IMDb Top 25
-  const byRank = [...movies]
+  const byRank = [...fullLengthMovies]
     .filter((m) => m.imdbRank != null)
     .sort((a, b) => (a.imdbRank ?? 999) - (b.imdbRank ?? 999));
   if (byRank.length > 0) {
-    reels.push({ id: "reel-top25", title: "The Top 25", items: byRank.slice(0, 25) });
+    reels.push({ id: "reel-top25", title: t("reel.top25"), items: byRank.slice(0, 25) });
   }
 
   const myListMovies = myList
-    .map((id) => movies.find((m) => m.id === id))
+    .map((id) => fullLengthMovies.find((m) => m.id === id))
     .filter((m): m is Movie => !!m);
   if (user) {
     reels.push({
       id: "reel-mylist",
-      title: "My List",
+      title: t("reel.myList"),
       items: myListMovies,
-      emptyMessage: "Your list is empty. Tap the + on any film to save it here.",
+      emptyMessage: t("reel.myListEmpty"),
     });
   }
 
   // Genre reels — each genre sorted by popularity (newer + higher-rated first)
   const genreBuckets = new Map<string, Movie[]>();
-  for (const m of movies) {
+  for (const m of fullLengthMovies) {
     if (!m.genre) continue;
     const arr = genreBuckets.get(m.genre) ?? [];
     arr.push(m);
@@ -176,14 +186,14 @@ function Browse({
     const items = genreBuckets.get(g);
     if (items && items.length >= 4) {
       items.sort(byPopularity);
-      reels.push({ id: `reel-genre-${g.toLowerCase().replace(/\s+/g, "-")}`, title: g, items });
+      reels.push({ id: `reel-genre-${g.toLowerCase().replace(/\s+/g, "-")}`, title: tg(g), items });
     }
   }
 
   // Studio collection reels — sorted by popularity
   for (const col of COLLECTIONS) {
     const idSet = new Set(col.tmdbIds);
-    const items = movies.filter((m) => m.tmdbId != null && idSet.has(m.tmdbId));
+    const items = fullLengthMovies.filter((m) => m.tmdbId != null && idSet.has(m.tmdbId));
     if (items.length > 0) {
       items.sort(byPopularity);
       reels.push({
@@ -195,23 +205,23 @@ function Browse({
   }
 
   // Decade reels — sorted by popularity within each era
-  const decades: { label: string; from: number; to: number }[] = [
-    { label: "Modern Cinema · 2000s–Now", from: 2000, to: 2099 },
-    { label: "The Blockbuster Era · 1980s–1990s", from: 1980, to: 1999 },
-    { label: "New Hollywood · 1960s–1970s", from: 1960, to: 1979 },
-    { label: "The Classics · 1920s–1950s", from: 1920, to: 1959 },
+  const decadeLabels = [
+    { key: "reel.decade.modern", from: 2000, to: 2099 },
+    { key: "reel.decade.blockbuster", from: 1980, to: 1999 },
+    { key: "reel.decade.newHollywood", from: 1960, to: 1979 },
+    { key: "reel.decade.classics", from: 1920, to: 1959 },
   ];
-  for (const d of decades) {
-    const items = movies.filter((m) => m.year >= d.from && m.year <= d.to);
+  for (const d of decadeLabels) {
+    const items = fullLengthMovies.filter((m) => m.year >= d.from && m.year <= d.to);
     if (items.length >= 4) {
       items.sort(byPopularity);
-      reels.push({ id: `reel-decade-${d.from}`, title: d.label, items });
+      reels.push({ id: `reel-decade-${d.from}`, title: t(d.key), items });
     }
   }
 
   // Full catalog — sorted by popularity
-  const fullCatalog = [...movies].sort(byPopularity);
-  reels.push({ id: "reel-catalog", title: "Browse All", items: fullCatalog });
+  const fullCatalog = [...fullLengthMovies].sort(byPopularity);
+  reels.push({ id: "reel-catalog", title: t("reel.browseAll"), items: fullCatalog });
 
   return (
     <>
@@ -237,21 +247,20 @@ function Browse({
               <div className="flex flex-col items-start gap-5 p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8">
                 <div>
                   <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-glow-soft">
-                    Become a member
+                    {t("member.becomeMember")}
                   </div>
                   <h3 className="mt-2 font-display text-3xl tracking-tight text-bone">
-                    Make a list. Resume anywhere.
+                    {t("member.makeList")}
                   </h3>
                   <p className="mt-2 max-w-md font-sans text-sm text-ash">
-                    Create a free account to save films, pick up where you left off,
-                    and keep your reel of personal picks.
+                    {t("member.desc")}
                   </p>
                 </div>
                 <button
                   onClick={onSignIn}
                   className="shrink-0 rounded-full bg-glow px-6 py-3 font-sans text-sm font-semibold text-ink transition-all hover:bg-glow-soft"
                 >
-                  Create account
+                  {t("member.createAccount")}
                 </button>
               </div>
             </div>
@@ -263,17 +272,16 @@ function Browse({
 }
 
 function SearchResults({ movies, query }: { movies: Movie[]; query: string }) {
+  const t = useLanguage((s) => s.t);
   return (
     <div className="px-4 pb-24 pt-24 sm:px-8">
       <div className="mb-6">
-        <SprocketDivider title={`Search · ${query}`} />
+        <SprocketDivider title={`${t("nav.search")} · ${query}`} />
       </div>
       {movies.length === 0 ? (
         <div className="py-20 text-center">
-          <p className="font-display text-3xl text-bone">No films matched.</p>
-          <p className="mt-2 font-sans text-sm text-ash">
-            Try a different title, director, or genre.
-          </p>
+          <p className="font-display text-3xl text-bone">{t("search.noResults")}</p>
+          <p className="mt-2 font-sans text-sm text-ash">{t("search.tryAgain")}</p>
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 sm:gap-4">

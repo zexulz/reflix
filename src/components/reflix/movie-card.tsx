@@ -4,6 +4,7 @@ import { Play, Plus, Check } from "lucide-react";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { useApp } from "@/lib/store";
+import { useLanguage } from "@/lib/lang-store";
 import { formatRuntime, type Movie } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -19,6 +20,8 @@ export function MovieCard({
   const openDetail = useApp((s) => s.openDetail);
   const toggleList = useApp((s) => s.toggleList);
   const inList = useApp((s) => s.myList.includes(movie.id));
+  const tg = useLanguage((s) => s.tg);
+  const language = useLanguage((s) => s.language);
 
   const pct =
     progress && progress.duration > 0
@@ -64,7 +67,7 @@ export function MovieCard({
         {/* NEW / IMDb rank flag */}
         {movie.isNew ? (
           <div className="absolute left-2 top-2 rounded-md bg-glow px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.2em] text-ink shadow-[0_0_12px_-2px_var(--glow)]">
-            New
+            {language === "es" ? "Nuevo" : language === "uk" ? "Нове" : "New"}
           </div>
         ) : movie.imdbRank ? (
           <div className="absolute left-2 top-2 rounded-md border border-glow/30 bg-ink/60 px-1.5 py-0.5 font-mono text-[9px] font-medium tabular-nums text-glow-soft backdrop-blur-md">
@@ -94,7 +97,7 @@ export function MovieCard({
             <span className="text-hairline">·</span>
             <span>{formatRuntime(movie.duration)}</span>
             <span className="text-hairline">·</span>
-            <span className="truncate">{movie.genre}</span>
+            <span className="truncate">{tg(movie.genre)}</span>
           </div>
         </div>
 

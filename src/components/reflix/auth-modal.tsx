@@ -11,6 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useApp } from "@/lib/store";
+import { useLanguage } from "@/lib/lang-store";
 import { useSignIn, useSignUp } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +21,7 @@ export function AuthModal() {
   const openAuth = useApp((s) => s.openAuth);
   const closeAuth = useApp((s) => s.closeAuth);
   const [tab, setTab] = useState<"signin" | "signup">(mode);
+  const t = useLanguage((s) => s.t);
 
   // form state
   const [email, setEmail] = useState("");
@@ -31,7 +33,6 @@ export function AuthModal() {
   const signUp = useSignUp();
   const pending = signIn.isPending || signUp.isPending;
 
-  // keep tab synced when opened via header/footer
   const handleOpenChange = (o: boolean) => {
     if (o) setTab(mode);
     else closeAuth();
@@ -68,7 +69,7 @@ export function AuthModal() {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="w-[94vw] max-w-md overflow-hidden rounded-xl border-hairline bg-ink-2 p-0">
-        <DialogTitle className="sr-only">Sign in to Reflix</DialogTitle>
+        <DialogTitle className="sr-only">{t("auth.signInToReflix")}</DialogTitle>
 
         {/* header band */}
         <div className="relative border-b border-hairline px-6 pb-5 pt-7">
@@ -80,9 +81,7 @@ export function AuthModal() {
             <span className="font-display text-2xl tracking-[0.16em] text-bone">REFLIX</span>
           </div>
           <p className="mt-3 font-sans text-sm text-ash">
-            {tab === "signin"
-              ? "Sign in to resume your films."
-              : "Create an account to start your list."}
+            {tab === "signin" ? t("auth.signInSubtitle") : t("auth.createSubtitle")}
           </p>
         </div>
 
@@ -93,13 +92,13 @@ export function AuthModal() {
                 value="signin"
                 className="rounded-full data-[state=active]:bg-glow data-[state=active]:text-ink"
               >
-                Sign in
+                {t("auth.signIn")}
               </TabsTrigger>
               <TabsTrigger
                 value="signup"
                 className="rounded-full data-[state=active]:bg-glow data-[state=active]:text-ink"
               >
-                Create account
+                {t("auth.createAccount")}
               </TabsTrigger>
             </TabsList>
 
@@ -107,20 +106,20 @@ export function AuthModal() {
               {tab === "signup" && (
                 <div className="space-y-1.5">
                   <Label htmlFor="name" className="font-mono text-[10px] uppercase tracking-[0.2em] text-ash">
-                    Name (optional)
+                    {t("auth.name")}
                   </Label>
                   <Input
                     id="name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="Your name"
+                    placeholder={t("auth.namePlaceholder")}
                     className="border-hairline bg-ink text-bone placeholder:text-ash/60 focus-visible:ring-glow/40"
                   />
                 </div>
               )}
               <div className="space-y-1.5">
                 <Label htmlFor="email" className="font-mono text-[10px] uppercase tracking-[0.2em] text-ash">
-                  Email
+                  {t("auth.email")}
                 </Label>
                 <Input
                   id="email"
@@ -128,13 +127,13 @@ export function AuthModal() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@cinema.com"
+                  placeholder={t("auth.emailPlaceholder")}
                   className="border-hairline bg-ink text-bone placeholder:text-ash/60 focus-visible:ring-glow/40"
                 />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="password" className="font-mono text-[10px] uppercase tracking-[0.2em] text-ash">
-                  Password
+                  {t("auth.password")}
                 </Label>
                 <Input
                   id="password"
@@ -142,7 +141,7 @@ export function AuthModal() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="At least 6 characters"
+                  placeholder={t("auth.passwordPlaceholder")}
                   className="border-hairline bg-ink text-bone placeholder:text-ash/60 focus-visible:ring-glow/40"
                 />
               </div>
@@ -161,11 +160,10 @@ export function AuthModal() {
                 )}
               >
                 {pending && <Loader2 className="h-4 w-4 animate-spin" />}
-                {tab === "signin" ? "Sign in" : "Create account"}
+                {tab === "signin" ? t("auth.signIn") : t("auth.createAccount")}
               </button>
             </form>
           </Tabs>
-
         </div>
       </DialogContent>
     </Dialog>

@@ -5,6 +5,7 @@ import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
 import { Play, Plus, Check, Star } from "lucide-react";
 import { useApp } from "@/lib/store";
+import { useLanguage } from "@/lib/lang-store";
 import { formatRuntime, type Movie } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -17,11 +18,43 @@ export function Hero({ movies }: { movies: Movie[] }) {
   const toggleList = useApp((s) => s.toggleList);
   const play = useApp((s) => s.play);
   const openDetail = useApp((s) => s.openDetail);
+  const t = useLanguage((s) => s.t);
+  const tg = useLanguage((s) => s.tg);
+  const language = useLanguage((s) => s.language);
+
+  // fetch translated loglines for all hero movies when non-English
+  const [translatedData, setTranslatedData] = useState<Record<string, { title?: string; overview?: string }>>({});
+
+  useEffect(() => {
+    if (language === "en" || !language || pool.length === 0) {
+      return;
+    }
+    let cancelled = false;
+    Promise.all(
+      pool.map(async (m) => {
+        if (!m.tmdbId) return { id: m.id, data: {} };
+        try {
+          const res = await fetch(`/api/tmdb/translate?tmdbId=${m.tmdbId}&lang=${language}`);
+          const d = await res.json();
+          return { id: m.id, data: { title: d.title, overview: d.overview } };
+        } catch {
+          return { id: m.id, data: {} };
+        }
+      })
+    ).then((results) => {
+      if (!cancelled) {
+        const map: Record<string, { title?: string; overview?: string }> = {};
+        for (const r of results) map[r.id] = r.data;
+        setTranslatedData(map);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [language, pool.map((m) => m.id).join(",")]);
 
   useEffect(() => {
     if (pool.length <= 1) return;
-    const t = setInterval(() => setIdx((i) => (i + 1) % pool.length), 9000);
-    return () => clearInterval(t);
+    const timer = setInterval(() => setIdx((i) => (i + 1) % pool.length), 9000);
+    return () => clearInterval(timer);
   }, [pool.length]);
 
   if (pool.length === 0) {
@@ -87,10 +120,10 @@ export function Hero({ movies }: { movies: Movie[] }) {
               <span className="bulb h-1.5 w-1.5 rounded-full bg-glow" />
             </div>
             <span className="font-mono text-[11px] uppercase tracking-[0.34em] text-bone/70">
-              Now Showing
+              {t("hero.nowShowing")}
             </span>
             <span className="font-mono text-[11px] uppercase tracking-[0.34em] text-ash">
-              · REEL 01 / FEATURED
+              · {language === "es" ? "BOBINA 01 / DESTACADO" : language === "uk" ? "СТРІЧКА 01 / РЕКОМЕНДОВАНО" : "REEL 01 / FEATURED"}
             </span>
           </div>
 
@@ -102,7 +135,7 @@ export function Hero({ movies }: { movies: Movie[] }) {
             transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
             className="font-display text-[13vw] leading-[0.92] tracking-tight text-bone sm:text-7xl md:text-8xl"
           >
-            {movie.title}
+            {translatedData[movie.id]?.title || movie.title}
           </motion.h1>
 
           {/* meta row */}
@@ -111,7 +144,7 @@ export function Hero({ movies }: { movies: Movie[] }) {
             <span className="text-hairline">·</span>
             <span>{formatRuntime(movie.duration)}</span>
             <span className="text-hairline">·</span>
-            <span>{movie.genre}</span>
+            <span>{tg(movie.genre)}</span>
             <span className="text-hairline">·</span>
             <span className="inline-flex items-center gap-1 text-bone/80">
               <Star className="h-3 w-3 fill-glow text-glow" />
@@ -119,14 +152,14 @@ export function Hero({ movies }: { movies: Movie[] }) {
             </span>
             {movie.isOriginal && (
               <span className="ml-1 rounded-md border border-glow/40 bg-glow/5 px-1.5 py-0.5 text-[9px] tracking-[0.2em] text-glow-soft backdrop-blur-sm">
-                Reflix Original
+                {language === "es" ? "Original de Reflix" : language === "uk" ? "Оригінал Reflix" : "Reflix Original"}
               </span>
             )}
           </div>
 
-          {/* logline */}
+          {/* logline — uses TMDB-translated overview if available */}
           <p className="mt-4 max-w-xl font-sans text-base leading-relaxed text-bone/80 text-balance sm:text-lg">
-            {movie.logline}
+            {translatedData[movie.id]?.overview || movie.logline}
           </p>
 
           {/* CTAs */}
@@ -136,13 +169,13 @@ export function Hero({ movies }: { movies: Movie[] }) {
               className="group flex items-center gap-2.5 rounded-full bg-glow px-7 py-3 font-sans text-sm font-semibold text-ink transition-all duration-300 hover:bg-glow-soft hover:shadow-[0_0_40px_-6px_var(--glow)] hover:scale-[1.02]"
             >
               <Play className="h-4 w-4 fill-ink transition-transform group-hover:scale-110" />
-              Play
+              {t("hero.play")}
             </button>
             <button
               onClick={() => openDetail(movie)}
               className="flex items-center gap-2 rounded-full border border-hairline bg-ink/40 px-6 py-3 font-sans text-sm text-bone backdrop-blur-md transition-all duration-300 hover:border-bone/30 hover:bg-ink-3"
             >
-              More info
+              {t("hero.moreInfo")}
             </button>
             <button
               onClick={() => toggleList(movie.id)}

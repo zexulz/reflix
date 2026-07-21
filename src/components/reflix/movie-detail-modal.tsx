@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Play, Plus, Check, Star, Clapperboard, User, Film, Pencil } from "lucide-react";
 import {
@@ -8,6 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useApp } from "@/lib/store";
+import { useLanguage } from "@/lib/lang-store";
 import { useProgress } from "@/lib/hooks";
 import { formatRuntime, type Movie } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -22,6 +24,37 @@ export function MovieDetailModal() {
   const setView = useApp((s) => s.setView);
   const openAdminForm = useApp((s) => s.openAdminForm);
   const { data: progress } = useProgress();
+  const t = useLanguage((s) => s.t);
+  const tg = useLanguage((s) => s.tg);
+  const language = useLanguage((s) => s.language);
+
+  // fetch translated movie data (title, overview, genre) from TMDB when the
+  // modal opens and the user has a non-English language selected
+  const [translated, setTranslated] = useState<{
+    title?: string;
+    overview?: string;
+    genre?: string;
+  }>({});
+
+  useEffect(() => {
+    if (!movie || !movie.tmdbId || language === "en" || !language) {
+      return;
+    }
+    let cancelled = false;
+    fetch(`/api/tmdb/translate?tmdbId=${movie.tmdbId}&lang=${language}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (!cancelled && data.title) {
+          setTranslated({
+            title: data.title,
+            overview: data.overview,
+            genre: data.genres?.[0],
+          });
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [movie?.id, movie?.tmdbId, language]);
 
   const open = !!movie;
   const prog = movie && progress ? progress.find((p) => p.movieId === movie.id) : null;
@@ -59,7 +92,7 @@ export function MovieDetailModal() {
                 <div className="absolute inset-0 bg-gradient-to-br from-[#1a1209] via-[#100a06] to-[#0c0907]">
                   <div className="absolute inset-4 border border-glow/10" />
                   <div className="absolute right-5 top-5 font-mono text-[10px] uppercase tracking-[0.3em] text-glow-soft/50">
-                    {movie.imdbRank ? `IMDb · No. ${movie.imdbRank}` : ""}
+                    {movie.imdbRank ? (language === "es" ? `IMDb · Nº ${movie.imdbRank}` : language === "uk" ? `IMDb · № ${movie.imdbRank}` : `IMDb · No. ${movie.imdbRank}`) : ""}
                   </div>
                 </div>
               )}
@@ -71,11 +104,11 @@ export function MovieDetailModal() {
                 <div>
                   {movie.isOriginal && (
                     <span className="mb-2 inline-block rounded-[3px] border border-glow/40 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.2em] text-glow-soft">
-                      Reflix Original
+                      {language === "es" ? "Original de Reflix" : language === "uk" ? "Оригінал Reflix" : "Reflix Original"}
                     </span>
                   )}
                   <h2 className="font-display text-4xl leading-none tracking-tight text-bone sm:text-5xl">
-                    {movie.title}
+                    {translated.title || movie.title}
                   </h2>
                 </div>
               </div>
@@ -89,7 +122,7 @@ export function MovieDetailModal() {
                 <span className="text-hairline">·</span>
                 <span>{formatRuntime(movie.duration)}</span>
                 <span className="text-hairline">·</span>
-                <span>{movie.genre}</span>
+                <span>{tg(movie.genre)}</span>
                 <span className="text-hairline">·</span>
                 <span className="inline-flex items-center gap-1 text-bone/80">
                   <Star className="h-3 w-3 fill-glow text-glow" />
@@ -104,7 +137,7 @@ export function MovieDetailModal() {
                   className="flex items-center gap-2.5 rounded-full bg-glow px-6 py-2.5 font-sans text-sm font-semibold text-ink transition-all hover:bg-glow-soft"
                 >
                   <Play className="h-4 w-4 fill-ink" />
-                  {prog ? `Resume · ${resumePct}%` : "Play"}
+                  {prog ? `${resumePct}%` : t("detail.play")}
                 </button>
                 <button
                   onClick={() => toggleList(movie.id)}
@@ -129,7 +162,7 @@ export function MovieDetailModal() {
                     className="ml-auto flex items-center gap-1.5 rounded-full border border-hairline px-4 py-2 font-sans text-xs text-bone/80 transition-colors hover:border-glow/40 hover:text-glow-soft"
                   >
                     <Pencil className="h-3.5 w-3.5" />
-                    Edit
+                    {t("detail.edit")}
                   </button>
                 )}
               </div>
@@ -148,16 +181,16 @@ export function MovieDetailModal() {
                 {movie.logline}
               </p>
 
-              {/* description */}
+              {/* description — uses TMDB-translated overview if available */}
               <p className="mt-4 font-sans text-sm leading-relaxed text-ash">
-                {movie.description}
+                {translated.overview || movie.description || movie.logline}
               </p>
 
               {/* credits */}
               <div className="mt-6 grid grid-cols-1 gap-4 border-t border-hairline pt-5 sm:grid-cols-3">
-                <Credit icon={<Clapperboard className="h-3.5 w-3.5" />} label="Director" value={movie.director} />
-                <Credit icon={<Film className="h-3.5 w-3.5" />} label="Genre" value={movie.genre} />
-                <Credit icon={<User className="h-3.5 w-3.5" />} label="Cast" value={movie.cast} />
+                <Credit icon={<Clapperboard className="h-3.5 w-3.5" />} label={t("detail.director")} value={movie.director} />
+                <Credit icon={<Film className="h-3.5 w-3.5" />} label={t("detail.genre")} value={tg(movie.genre)} />
+                <Credit icon={<User className="h-3.5 w-3.5" />} label={t("detail.cast")} value={movie.cast || "—"} />
               </div>
             </div>
           </>

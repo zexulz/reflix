@@ -13,16 +13,17 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/lib/lang-store";
 
-const NAV = [
-  { label: "Home", id: "top" },
-  { label: "Trending", id: "reel-trending" },
-  { label: "Action", id: "reel-genre-action" },
-  { label: "Comedy", id: "reel-genre-comedy" },
-  { label: "Horror", id: "reel-genre-horror" },
-  { label: "Marvel", id: "collection-marvel" },
-  { label: "Browse All", id: "reel-catalog" },
-  { label: "My List", id: "reel-mylist" },
+const NAV_KEYS = [
+  { key: "nav.home", id: "top" },
+  { key: "nav.trending", id: "reel-trending" },
+  { key: "nav.action", id: "reel-genre-action" },
+  { key: "nav.comedy", id: "reel-genre-comedy" },
+  { key: "nav.horror", id: "reel-genre-horror" },
+  { key: "nav.marvel", id: "collection-marvel" },
+  { key: "nav.browseAll", id: "reel-catalog" },
+  { key: "nav.myList", id: "reel-mylist" },
 ];
 
 export function Header() {
@@ -35,6 +36,7 @@ export function Header() {
   const openAuth = useApp((s) => s.openAuth);
   const { data: user } = useMe();
   const signOut = useSignOut();
+  const t = useLanguage((s) => s.t);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
@@ -95,17 +97,17 @@ export function Header() {
             className="flex items-center gap-1 font-mono text-[11px] uppercase tracking-[0.2em] text-ash transition-colors hover:text-glow"
           >
             <ChevronLeft className="h-3.5 w-3.5" />
-            Back to Reflix
+            {t("admin.backToReflix")}
           </button>
         ) : (
           <nav className="hidden items-center gap-1 md:flex">
-            {NAV.map((n) => (
+            {NAV_KEYS.map((n) => (
               <button
                 key={n.id}
                 onClick={() => go(n.id)}
                 className="rounded-md px-3 py-1.5 font-sans text-sm text-bone/75 transition-colors hover:bg-ink-3 hover:text-bone"
               >
-                {n.label}
+                {t(n.key)}
               </button>
             ))}
           </nav>
@@ -120,7 +122,7 @@ export function Header() {
                 autoFocus
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search films, directors…"
+                placeholder={t("nav.search")}
                 className="w-36 bg-transparent font-sans text-sm text-bone placeholder:text-ash focus:outline-none sm:w-56"
               />
               <button
@@ -173,7 +175,7 @@ export function Header() {
                   className="cursor-pointer focus:bg-ink-3"
                 >
                   <ListVideo className="mr-2 h-4 w-4" />
-                  My List
+                  {t("nav.myList")}
                 </DropdownMenuItem>
                 {user.role === "ADMIN" && (
                   <DropdownMenuItem
@@ -181,7 +183,7 @@ export function Header() {
                     className="cursor-pointer focus:bg-ink-3"
                   >
                     <LayoutDashboard className="mr-2 h-4 w-4" />
-                    Curator's Desk
+                    {t("admin.curatorsDesk")}
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator className="bg-hairline" />
@@ -190,7 +192,7 @@ export function Header() {
                   className="cursor-pointer text-bone/80 focus:bg-ink-3"
                 >
                   <LogOut className="mr-2 h-4 w-4" />
-                  Sign out
+                  {t("nav.signOut")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -199,7 +201,7 @@ export function Header() {
               onClick={() => openAuth("signin")}
               className="rounded-full border border-hairline bg-ink/40 px-4 py-1.5 font-sans text-sm text-bone backdrop-blur-sm transition-all hover:border-glow/40 hover:text-glow-soft"
             >
-              Sign in
+              {t("nav.signIn")}
             </button>
           )}
         </div>

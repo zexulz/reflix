@@ -1,12 +1,11 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/lib/lang-store";
 
 /**
  * SprocketDivider — the signature structural element of Reflix.
- * A perforated film-strip hairline on each side of a reel label, with a
- * pulsing projector-bulb. The REEL numbering encodes the curated order of
- * rows (a real sequence), so the numbering is truthful, not decorative.
+ * The REEL numbering encodes the curated order of rows.
  */
 export function SprocketDivider({
   reel,
@@ -19,6 +18,17 @@ export function SprocketDivider({
 }) {
   const perf =
     "bg-[repeating-linear-gradient(90deg,var(--ink-3)_0_9px,transparent_9px_17px)]";
+  const t = useLanguage((s) => s.t);
+
+  // "REEL" translations
+  const reelWord: Record<string, string> = {
+    en: "REEL",
+    es: "BOBINA",
+    uk: "СТРІЧКА",
+  };
+  const lang = useLanguage((s) => s.language) ?? "en";
+  const reelLabel = reelWord[lang] || "REEL";
+
   return (
     <div className={cn("relative flex items-center gap-4 py-1", className)}>
       <div className={cn("h-[5px] flex-1 rounded-[1px]", perf)} aria-hidden />
@@ -28,7 +38,7 @@ export function SprocketDivider({
           {reel != null && (
             <>
               <span className="text-bone/55">
-                REEL {String(reel).padStart(2, "0")}
+                {reelLabel} {String(reel).padStart(2, "0")}
               </span>
               <span className="mx-2 text-hairline">/</span>
             </>
