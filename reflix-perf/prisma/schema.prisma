@@ -1,0 +1,82 @@
+// Reflix — Prisma schema
+// Deploys to Supabase Postgres. The DATABASE_URL env var points at the
+// Supabase connection string (see SETUP.md).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  passwordHash String
+  // "USER" | "ADMIN" — SQLite has no native enum, stored as String
+  role         String   @default("USER")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  progress WatchProgress[]
+}
+
+model Movie {
+  id             String   @id @default(cuid())
+  title          String
+  slug           String   @unique
+  logline        String
+  description    String
+  posterUrl      String   @default("")
+  backdropUrl    String?
+  // videoUrl is nullable on purpose: the curator pastes their licensed
+  // hosted stream URL here via the admin dashboard. Until then the film
+  // is browseable but shows a "no stream attached" state in the player.
+  videoUrl       String?
+  imdbId         String?
+  tmdbId         Int?     @unique
+  duration       Int      @default(0)
+  year           Int      @default(0)
+  genre          String   @default("")
+  director       String   @default("")
+  cast           String   @default("")
+  rating         Float    @default(0)
+  featured       Boolean  @default(false)
+  isNew          Boolean  @default(false)
+  isOriginal     Boolean  @default(false)
+  isEditorsPick  Boolean  @default(false)
+  // IMDb Top 250 rank (1–250) for the seed catalog; null for curator-added
+  imdbRank       Int?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  progress WatchProgress[]
+
+  @@index([featured])
+  @@index([isNew])
+  @@index([isOriginal])
+  @@index([isEditorsPick])
+  @@index([imdbRank])
+  @@index([genre])
+  @@index([year])
+  @@index([tmdbId])
+}
+
+model WatchProgress {
+  id        String   @id @default(cuid())
+  userId    String
+  movieId   String
+  // playback position in seconds
+  position  Int      @default(0)
+  // movie duration in seconds (snapshot for progress bar calc)
+  duration  Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  movie  Movie  @relation(fields: [movieId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, movieId])
+}
