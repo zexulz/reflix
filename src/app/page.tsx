@@ -7,7 +7,9 @@ import { useMe, useMovies, useProgress } from "@/lib/hooks";
 import { Header } from "@/components/reflix/header";
 import { Hero } from "@/components/reflix/hero";
 import { Reel } from "@/components/reflix/reel";
+import { LazyReel } from "@/components/reflix/lazy-reel";
 import { Footer } from "@/components/reflix/footer";
+import { COLLECTIONS } from "@/lib/collections";
 import { MovieDetailModal } from "@/components/reflix/movie-detail-modal";
 import { AuthModal } from "@/components/reflix/auth-modal";
 import { Player } from "@/components/reflix/player";
@@ -147,6 +149,24 @@ function Browse({
     });
   }
 
+  // Studio collection reels — Marvel, DC, Pixar, Disney
+  // These pull from your existing catalog by tmdbId. No re-adding movies needed;
+  // any film in your database whose tmdbId matches shows up here automatically.
+  // Placed near the top so the studio collections are prominent.
+  for (const col of COLLECTIONS) {
+    const idSet = new Set(col.tmdbIds);
+    const items = movies.filter((m) => m.tmdbId != null && idSet.has(m.tmdbId));
+    if (items.length > 0) {
+      // sort by year descending so the newest films lead
+      items.sort((a, b) => b.year - a.year);
+      reels.push({
+        id: col.id,
+        title: col.title,
+        items,
+      });
+    }
+  }
+
   // Genre reels — each genre that has enough films gets its own row,
   // films sorted by IMDb rank so the strongest titles lead.
   const genreBuckets = new Map<string, Movie[]>();
@@ -177,7 +197,7 @@ function Browse({
     }
   }
 
-  reels.push({ id: "reel-catalog", title: "The Full Top 250", items: byRank });
+  reels.push({ id: "reel-catalog", title: "The Full Catalog", items: byRank });
 
   return (
     <>
@@ -185,15 +205,16 @@ function Browse({
 
       <div className="relative z-10 space-y-12 pb-24 pt-10 sm:space-y-16 sm:pt-14">
         {reels.map((r, i) => (
-          <Reel
-            key={r.id}
-            id={r.id}
-            reel={i + 2}
-            title={r.title}
-            movies={r.items}
-            progressMap={r.progressMap}
-            emptyMessage={r.emptyMessage}
-          />
+          <LazyReel key={r.id}>
+            <Reel
+              id={r.id}
+              reel={i + 2}
+              title={r.title}
+              movies={r.items}
+              progressMap={r.progressMap}
+              emptyMessage={r.emptyMessage}
+            />
+          </LazyReel>
         ))}
 
         {!user && (

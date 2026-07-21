@@ -10,7 +10,7 @@ export type Movie = {
   title: string;
   slug: string;
   logline: string;
-  description: string;
+  description?: string;   // optional in list view; present in single-movie fetch
   posterUrl: string;       // empty string → typographic title-card fallback
   backdropUrl: string | null;
   videoUrl: string | null; // null → "no stream attached" state in the player
@@ -21,7 +21,7 @@ export type Movie = {
   year: number;
   genre: string;
   director: string;
-  cast: string;
+  cast?: string;           // optional in list view; present in single-movie fetch
   rating: number;
   featured: boolean;
   isNew: boolean;

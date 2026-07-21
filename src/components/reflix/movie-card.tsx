@@ -42,6 +42,7 @@ export function MovieCard({
             src={movie.posterUrl}
             alt={movie.title}
             fill
+            loading="lazy"
             sizes="(max-width: 640px) 44vw, 210px"
             className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.06]"
           />

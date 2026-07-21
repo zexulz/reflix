@@ -23,9 +23,36 @@ export async function GET(req: NextRequest) {
       }
     : {};
 
+  // only select the fields needed for the browse/card view — skip heavy
+  // text fields (description, cast, logline) that load in the detail modal.
+  // This dramatically reduces the payload size for catalogs with thousands
+  // of films.
   const movies = await db.movie.findMany({
     where,
     orderBy: [{ featured: "desc" }, { createdAt: "desc" }],
+    select: {
+      id: true,
+      title: true,
+      slug: true,
+      logline: true,
+      posterUrl: true,
+      backdropUrl: true,
+      videoUrl: true,
+      imdbId: true,
+      tmdbId: true,
+      imdbRank: true,
+      duration: true,
+      year: true,
+      genre: true,
+      director: true,
+      rating: true,
+      featured: true,
+      isNew: true,
+      isOriginal: true,
+      isEditorsPick: true,
+      createdAt: true,
+      updatedAt: true,
+    },
   });
   return NextResponse.json({ movies });
 }

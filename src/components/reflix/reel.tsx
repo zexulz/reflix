@@ -1,13 +1,14 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { MovieCard } from "./movie-card";
 import { SprocketDivider } from "./sprocket-divider";
 import type { Movie } from "@/lib/types";
-import { cn } from "@/lib/utils";
 
 type ProgressMap = Record<string, { position: number; duration: number }>;
+
+const BATCH_SIZE = 12; // render 12 cards at a time, load more on scroll
 
 export function Reel({
   id,
@@ -25,6 +26,8 @@ export function Reel({
   emptyMessage?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const [visibleCount, setVisibleCount] = useState(BATCH_SIZE);
 
   const scroll = (dir: 1 | -1) => {
     const el = ref.current;
@@ -32,7 +35,33 @@ export function Reel({
     el.scrollBy({ left: dir * Math.min(el.clientWidth * 0.8, 720), behavior: "smooth" });
   };
 
+  // load more cards when the sentinel (trailing spacer) enters view
+  const loadMore = useCallback(() => {
+    setVisibleCount((prev) => Math.min(prev + BATCH_SIZE, movies.length));
+  }, [movies.length]);
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    const container = ref.current;
+    if (!sentinel || !container) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          loadMore();
+        }
+      },
+      { root: container, rootMargin: "0px 200px 0px 0px" }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [loadMore]);
+
   if (movies.length === 0 && !emptyMessage) return null;
+
+  const visibleMovies = movies.slice(0, visibleCount);
+  const hasMore = visibleCount < movies.length;
 
   return (
     <section id={id} className="scroll-mt-20">
@@ -66,14 +95,20 @@ export function Reel({
             ref={ref}
             className="no-scrollbar rfx-scroll flex gap-3 overflow-x-auto scroll-smooth px-4 pb-3 sm:gap-4 sm:px-8"
           >
-            {movies.map((m) => (
+            {visibleMovies.map((m) => (
               <MovieCard
                 key={m.id}
                 movie={m}
                 progress={progressMap?.[m.id]}
               />
             ))}
-            {/* trailing spacer so last card isn't clipped by the right fade */}
+            {/* sentinel — when this scrolls into view, load more cards */}
+            {hasMore && (
+              <div ref={sentinelRef} className="flex w-12 shrink-0 items-center justify-center">
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-hairline border-t-glow opacity-40" />
+              </div>
+            )}
+            {/* trailing spacer */}
             <div className="w-1 shrink-0" aria-hidden />
           </div>
         )}
