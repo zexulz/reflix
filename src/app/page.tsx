@@ -149,37 +149,36 @@ function Browse({
     });
   }
 
+  // Genre reels — placed near the top for easy navigation.
+  // Each genre that has enough films gets its own row, sorted by rating.
+  const genreBuckets = new Map<string, Movie[]>();
+  for (const m of movies) {
+    if (!m.genre) continue;
+    const arr = genreBuckets.get(m.genre) ?? [];
+    arr.push(m);
+    genreBuckets.set(m.genre, arr);
+  }
+  const genreOrder = ["Action", "Drama", "Comedy", "Adventure", "Animation", "Horror", "Science Fiction", "Crime", "Thriller", "Fantasy", "Biography", "Mystery", "War", "Western", "Romance", "Sports"];
+  for (const g of genreOrder) {
+    const items = genreBuckets.get(g);
+    if (items && items.length >= 4) {
+      // sort by rating descending so the best films lead
+      items.sort((a, b) => b.rating - a.rating);
+      reels.push({ id: `reel-genre-${g.toLowerCase().replace(/\s+/g, "-")}`, title: g, items });
+    }
+  }
+
   // Studio collection reels — Marvel, DC, Pixar, Disney
-  // These pull from your existing catalog by tmdbId. No re-adding movies needed;
-  // any film in your database whose tmdbId matches shows up here automatically.
-  // Placed near the top so the studio collections are prominent.
   for (const col of COLLECTIONS) {
     const idSet = new Set(col.tmdbIds);
     const items = movies.filter((m) => m.tmdbId != null && idSet.has(m.tmdbId));
     if (items.length > 0) {
-      // sort by year descending so the newest films lead
       items.sort((a, b) => b.year - a.year);
       reels.push({
         id: col.id,
         title: col.title,
         items,
       });
-    }
-  }
-
-  // Genre reels — each genre that has enough films gets its own row,
-  // films sorted by IMDb rank so the strongest titles lead.
-  const genreBuckets = new Map<string, Movie[]>();
-  for (const m of byRank) {
-    const arr = genreBuckets.get(m.genre) ?? [];
-    arr.push(m);
-    genreBuckets.set(m.genre, arr);
-  }
-  const genreOrder = ["Drama", "Crime", "Adventure", "Action", "Animation", "Biography", "Comedy", "Mystery", "War", "Western", "Science Fiction", "Horror", "Fantasy", "Romance", "Sports", "Thriller"];
-  for (const g of genreOrder) {
-    const items = genreBuckets.get(g);
-    if (items && items.length >= 4) {
-      reels.push({ id: `reel-genre-${g.toLowerCase().replace(/\s+/g, "-")}`, title: g, items });
     }
   }
 

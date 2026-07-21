@@ -17,9 +17,11 @@ import { cn } from "@/lib/utils";
 const NAV = [
   { label: "Home", id: "top" },
   { label: "Top 25", id: "reel-top25" },
-  { label: "Drama", id: "reel-genre-drama" },
-  { label: "Classics", id: "reel-decade-1920" },
-  { label: "Full 250", id: "reel-catalog" },
+  { label: "Action", id: "reel-genre-action" },
+  { label: "Comedy", id: "reel-genre-comedy" },
+  { label: "Horror", id: "reel-genre-horror" },
+  { label: "Marvel", id: "collection-marvel" },
+  { label: "Full Catalog", id: "reel-catalog" },
   { label: "My List", id: "reel-mylist" },
 ];
 

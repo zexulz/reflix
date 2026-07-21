@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useApp } from "@/lib/store";
 import type { MovieInput } from "@/lib/types";
@@ -17,10 +18,17 @@ export function useMe() {
 
 export function useMovies() {
   const search = useApp((s) => s.search);
+  // debounce the search so it doesn't fire on every keystroke
+  const [debouncedSearch, setDebouncedSearch] = useState(search);
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
   return useQuery({
-    queryKey: ["movies", search],
+    queryKey: ["movies", debouncedSearch],
     queryFn: async () => {
-      const { movies } = await api.movies(search || undefined);
+      const { movies } = await api.movies(debouncedSearch || undefined);
       return movies;
     },
   });

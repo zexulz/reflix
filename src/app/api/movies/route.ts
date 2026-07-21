@@ -12,13 +12,15 @@ function slugify(s: string): string {
 
 export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get("q")?.trim();
+  // case-insensitive partial matching — "dark" matches "The Dark Knight",
+  // "batman" matches "Batman Begins", "nolan" matches any Nolan film, etc.
   const where = q
     ? {
         OR: [
-          { title: { contains: q } },
-          { director: { contains: q } },
-          { genre: { contains: q } },
-          { cast: { contains: q } },
+          { title: { contains: q, mode: "insensitive" as const } },
+          { director: { contains: q, mode: "insensitive" as const } },
+          { genre: { contains: q, mode: "insensitive" as const } },
+          { cast: { contains: q, mode: "insensitive" as const } },
         ],
       }
     : {};
