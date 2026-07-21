@@ -114,6 +114,16 @@ function Browse({
     emptyMessage?: string;
   }[] = [];
 
+  // Popularity sort: newer + higher-rated films first.
+  // Score = rating * (1 + recency_bonus) where recency_bonus gives newer films a boost.
+  const byPopularity = (a: Movie, b: Movie) => {
+    const score = (m: Movie) => {
+      const recency = m.year >= 2023 ? 3 : m.year >= 2020 ? 2 : m.year >= 2015 ? 1 : 0;
+      return m.rating + recency;
+    };
+    return score(b) - score(a);
+  };
+
   const continueMovies = movies.filter(
     (m) => progressMap[m.id] && progressMap[m.id].duration > 0
   );
@@ -129,7 +139,11 @@ function Browse({
     });
   }
 
-  // IMDb Top 250 — the spine of the catalog. Ordered by rank.
+  // Trending Now — the most popular recent films across the whole catalog
+  const trending = [...movies].sort(byPopularity).slice(0, 25);
+  reels.push({ id: "reel-trending", title: "Trending Now", items: trending });
+
+  // IMDb Top 25
   const byRank = [...movies]
     .filter((m) => m.imdbRank != null)
     .sort((a, b) => (a.imdbRank ?? 999) - (b.imdbRank ?? 999));
@@ -149,8 +163,7 @@ function Browse({
     });
   }
 
-  // Genre reels — placed near the top for easy navigation.
-  // Each genre that has enough films gets its own row, sorted by rating.
+  // Genre reels — each genre sorted by popularity (newer + higher-rated first)
   const genreBuckets = new Map<string, Movie[]>();
   for (const m of movies) {
     if (!m.genre) continue;
@@ -162,18 +175,17 @@ function Browse({
   for (const g of genreOrder) {
     const items = genreBuckets.get(g);
     if (items && items.length >= 4) {
-      // sort by rating descending so the best films lead
-      items.sort((a, b) => b.rating - a.rating);
+      items.sort(byPopularity);
       reels.push({ id: `reel-genre-${g.toLowerCase().replace(/\s+/g, "-")}`, title: g, items });
     }
   }
 
-  // Studio collection reels — Marvel, DC, Pixar, Disney
+  // Studio collection reels — sorted by popularity
   for (const col of COLLECTIONS) {
     const idSet = new Set(col.tmdbIds);
     const items = movies.filter((m) => m.tmdbId != null && idSet.has(m.tmdbId));
     if (items.length > 0) {
-      items.sort((a, b) => b.year - a.year);
+      items.sort(byPopularity);
       reels.push({
         id: col.id,
         title: col.title,
@@ -182,27 +194,30 @@ function Browse({
     }
   }
 
-  // Decade reels — a second lens on the same catalog, grouped by era.
+  // Decade reels — sorted by popularity within each era
   const decades: { label: string; from: number; to: number }[] = [
-    { label: "The Classics · 1920s–1950s", from: 1920, to: 1959 },
-    { label: "New Hollywood · 1960s–1970s", from: 1960, to: 1979 },
-    { label: "The Blockbuster Era · 1980s–1990s", from: 1980, to: 1999 },
     { label: "Modern Cinema · 2000s–Now", from: 2000, to: 2099 },
+    { label: "The Blockbuster Era · 1980s–1990s", from: 1980, to: 1999 },
+    { label: "New Hollywood · 1960s–1970s", from: 1960, to: 1979 },
+    { label: "The Classics · 1920s–1950s", from: 1920, to: 1959 },
   ];
   for (const d of decades) {
-    const items = byRank.filter((m) => m.year >= d.from && m.year <= d.to);
+    const items = movies.filter((m) => m.year >= d.from && m.year <= d.to);
     if (items.length >= 4) {
+      items.sort(byPopularity);
       reels.push({ id: `reel-decade-${d.from}`, title: d.label, items });
     }
   }
 
-  reels.push({ id: "reel-catalog", title: "The Full Catalog", items: byRank });
+  // Full catalog — sorted by popularity
+  const fullCatalog = [...movies].sort(byPopularity);
+  reels.push({ id: "reel-catalog", title: "Browse All", items: fullCatalog });
 
   return (
     <>
       <Hero movies={movies} />
 
-      <div className="relative z-10 space-y-12 pb-24 pt-10 sm:space-y-16 sm:pt-14">
+      <div className="relative z-10 space-y-8 pb-24 pt-8 sm:space-y-10 sm:pt-12">
         {reels.map((r, i) => (
           <LazyReel key={r.id}>
             <Reel
@@ -218,7 +233,7 @@ function Browse({
 
         {!user && (
           <section className="px-4 sm:px-8">
-            <div className="mx-auto max-w-3xl overflow-hidden rounded-2xl border border-hairline bg-ink-2">
+            <div className="mx-auto max-w-3xl overflow-hidden rounded-2xl border border-hairline bg-ink-2/80 backdrop-blur-sm">
               <div className="flex flex-col items-start gap-5 p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8">
                 <div>
                   <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-glow-soft">
