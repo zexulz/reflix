@@ -44,6 +44,7 @@ export async function GET(req: NextRequest) {
       backdropUrl: true,
       videoUrl: true,
       tmdbId: true,
+      type: true,
       imdbRank: true,
       duration: true,
       year: true,

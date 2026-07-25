@@ -22,6 +22,7 @@ const NAV_KEYS = [
   { key: "nav.comedy", id: "reel-genre-comedy" },
   { key: "nav.horror", id: "reel-genre-horror" },
   { key: "nav.marvel", id: "collection-marvel" },
+  { key: "reel.series", id: "reel-series" },
   { key: "nav.browseAll", id: "reel-catalog" },
   { key: "nav.myList", id: "reel-mylist" },
 ];

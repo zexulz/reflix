@@ -32,9 +32,19 @@ export async function GET(req: NextRequest) {
     };
     const language = tmdbLang[lang] || "en-US";
 
-    const res = await fetch(
+    // try movie first, then TV show
+    let res = await fetch(
       `${TMDB_BASE}/movie/${tmdbId}?api_key=${TMDB_KEY}&language=${language}`
     );
+    let isTv = false;
+
+    if (!res.ok) {
+      // movie lookup failed — try TV
+      res = await fetch(
+        `${TMDB_BASE}/tv/${tmdbId}?api_key=${TMDB_KEY}&language=${language}`
+      );
+      isTv = res.ok;
+    }
 
     if (!res.ok) {
       return NextResponse.json({ error: "TMDB lookup failed." }, { status: 502 });
@@ -43,7 +53,7 @@ export async function GET(req: NextRequest) {
     const d = await res.json();
 
     return NextResponse.json({
-      title: d.title || null,
+      title: isTv ? (d.name || null) : (d.title || null),
       overview: d.overview || null,
       tagline: d.tagline || null,
       genres: d.genres?.map((g: any) => g.name) || [],

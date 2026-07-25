@@ -219,6 +219,13 @@ function Browse({
     }
   }
 
+  // Series reel — all TV series in the catalog (type === "series")
+  const series = fullLengthMovies.filter((m) => m.type === "series");
+  if (series.length >= 4) {
+    series.sort(byPopularity);
+    reels.push({ id: "reel-series", title: t("reel.series"), items: series });
+  }
+
   // Full catalog — sorted by popularity
   const fullCatalog = [...fullLengthMovies].sort(byPopularity);
   reels.push({ id: "reel-catalog", title: t("reel.browseAll"), items: fullCatalog });

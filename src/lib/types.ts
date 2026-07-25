@@ -16,6 +16,7 @@ export type Movie = {
   videoUrl: string | null; // null → "no stream attached" state in the player
   imdbId: string | null;
   tmdbId: number | null;
+  type?: string; // "movie" | "series"
   imdbRank: number | null;
   duration: number; // minutes
   year: number;

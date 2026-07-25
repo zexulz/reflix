@@ -38,6 +38,8 @@ model Movie {
   videoUrl       String?
   imdbId         String?
   tmdbId         Int?     @unique
+  // "movie" or "series" — determines which TMDB endpoint to use
+  type           String   @default("movie")
   duration       Int      @default(0)
   year           Int      @default(0)
   genre          String   @default("")

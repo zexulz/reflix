@@ -183,3 +183,46 @@ export function useTmdbImport() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["movies"] }),
   });
 }
+
+export function useTmdbTvSearch(query: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ["tmdb-tv-search", query],
+    queryFn: async () => {
+      const res = await fetch(`/api/tmdb/search-tv?q=${encodeURIComponent(query)}`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Search failed");
+      const { results } = await res.json();
+      return results as Array<{
+        tmdbId: number;
+        name: string;
+        year: number | null;
+        overview: string;
+        posterPath: string | null;
+        backdropPath: string | null;
+        rating: number;
+      }>;
+    },
+    enabled: enabled && query.trim().length >= 2,
+  });
+}
+
+export function useTmdbTvImport() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (tmdbId: number) => {
+      const res = await fetch("/api/tmdb/import-tv", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ tmdbId }),
+      });
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        throw new Error(e.error || "Import failed");
+      }
+      return res.json();
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["movies"] }),
+  });
+}

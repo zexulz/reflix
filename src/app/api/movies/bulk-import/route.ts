@@ -99,6 +99,61 @@ async function createMovieFromTmdb(tmdbId: number, videoUrl: string) {
   return movie;
 }
 
+// fetch TV show details from TMDB and create a Movie record with type="series".
+// Called as a fallback when a TMDB ID doesn't match a movie.
+async function createSeriesFromTmdb(tmdbId: number, videoUrl: string) {
+  if (!TMDB_KEY) return null;
+  const res = await fetch(
+    `${TMDB_BASE}/tv/${tmdbId}?api_key=${TMDB_KEY}&append_to_response=credits`
+  );
+  if (!res.ok) return null;
+  const d = await res.json();
+
+  const title: string = d.name || "Untitled";
+  const year: number = d.first_air_date ? Number(d.first_air_date.slice(0, 4)) : 0;
+  const runtime: number = d.episode_run_time?.[0] || 0;
+  const rating: number = d.vote_average ? Math.round(d.vote_average * 10) / 10 : 0;
+  const genre: string = d.genres?.[0]?.name || "Drama";
+  const logline: string = d.overview || "";
+  const director: string = d.created_by?.[0]?.name || "";
+  const cast: string = (d.credits?.cast || [])
+    .slice(0, 5)
+    .map((c: any) => c.name)
+    .join(", ");
+  const posterUrl: string = d.poster_path ? `${IMG_BASE}${d.poster_path}` : "";
+  const backdropUrl: string | null = d.backdrop_path
+    ? `${IMG_BASE}${d.backdrop_path}`
+    : null;
+
+  const movie = await db.movie.upsert({
+    where: { tmdbId },
+    update: { videoUrl },
+    create: {
+      title,
+      slug: `${slugify(title)}-${Date.now().toString(36)}`,
+      logline,
+      description: logline,
+      posterUrl,
+      backdropUrl,
+      videoUrl,
+      tmdbId,
+      type: "series",
+      imdbRank: null,
+      duration: runtime,
+      year,
+      genre,
+      director,
+      cast,
+      rating,
+      featured: false,
+      isNew: year >= new Date().getFullYear() - 1,
+      isOriginal: false,
+      isEditorsPick: false,
+    },
+  });
+  return movie;
+}
+
 type Result = {
   matched: { tmdbId: number; title: string }[];
   created: { tmdbId: number; title: string }[];
@@ -163,16 +218,20 @@ export async function POST(req: NextRequest) {
         });
         result.matched.push({ tmdbId, title: existing.title });
       } else {
-        // movie not in catalog — fetch from TMDB and create it.
-        // createMovieFromTmdb uses upsert on tmdbId, so even if a concurrent
-        // request creates the same movie at the same moment, the unique
-        // constraint prevents a duplicate — it updates instead.
+        // not in catalog — try movie first, then TV show as fallback.
+        // This auto-detects whether the TMDB ID is a movie or a series.
         const created = await createMovieFromTmdb(tmdbId, url);
         if (created) {
           result.created.push({ tmdbId, title: created.title });
         } else {
-          // TMDB lookup failed (invalid ID or API error)
-          result.notFound.push(tmdbId);
+          // movie lookup failed — try TV show
+          const tvCreated = await createSeriesFromTmdb(tmdbId, url);
+          if (tvCreated) {
+            result.created.push({ tmdbId, title: tvCreated.title });
+          } else {
+            // both movie and TV lookup failed
+            result.notFound.push(tmdbId);
+          }
         }
       }
     }
