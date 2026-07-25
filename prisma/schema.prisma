@@ -56,15 +56,27 @@ model Movie {
   updatedAt      DateTime @updatedAt
 
   progress WatchProgress[]
+  episodes Episode[]
 
   @@index([featured])
-  @@index([isNew])
-  @@index([isOriginal])
-  @@index([isEditorsPick])
-  @@index([imdbRank])
   @@index([genre])
   @@index([year])
   @@index([tmdbId])
+}
+
+model Episode {
+  id          String   @id @default(cuid())
+  seriesId    String   // → Movie.id (the parent series)
+  season      Int
+  episode     Int
+  title       String   @default("")
+  videoUrl    String?
+  createdAt   DateTime @default(now())
+
+  series      Movie    @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+
+  @@unique([seriesId, season, episode])
+  @@index([seriesId])
 }
 
 model WatchProgress {

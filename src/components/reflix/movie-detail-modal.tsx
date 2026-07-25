@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { Play, Plus, Check, Star, Clapperboard, User, Film, Pencil } from "lucide-react";
+import { Play, Plus, Check, Star, Clapperboard, User, Film, Pencil, Tv } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -36,6 +36,12 @@ export function MovieDetailModal() {
     genre?: string;
   }>({});
 
+  // episode state for series
+  const [episodes, setEpisodes] = useState<Record<number, Array<{
+    id: string; season: number; episode: number; title: string; videoUrl: string | null;
+  }>>>({});
+  const [selectedSeason, setSelectedSeason] = useState(1);
+
   useEffect(() => {
     if (!movie || !movie.tmdbId || language === "en" || !language) {
       return;
@@ -55,6 +61,26 @@ export function MovieDetailModal() {
       .catch(() => {});
     return () => { cancelled = true; };
   }, [movie?.id, movie?.tmdbId, language]);
+
+  // fetch episodes when a series detail modal opens
+  useEffect(() => {
+    if (!movie || movie.type !== "series") {
+      return;
+    }
+    let cancelled = false;
+    fetch(`/api/series/${movie.id}/episodes`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (!cancelled && data.seasons) {
+          setEpisodes(data.seasons);
+          // set selected season to the first available
+          const firstSeason = Object.keys(data.seasons).map(Number).sort((a, b) => a - b)[0];
+          if (firstSeason) setSelectedSeason(firstSeason);
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [movie?.id, movie?.type]);
 
   const open = !!movie;
   const prog = movie && progress ? progress.find((p) => p.movieId === movie.id) : null;
@@ -130,15 +156,17 @@ export function MovieDetailModal() {
                 </span>
               </div>
 
-              {/* CTAs */}
+              {/* CTAs — for series, the play button is hidden (episodes are listed below) */}
               <div className="mt-5 flex flex-wrap items-center gap-3">
-                <button
-                  onClick={() => handlePlay(movie)}
-                  className="flex items-center gap-2.5 rounded-full bg-glow px-6 py-2.5 font-sans text-sm font-semibold text-ink transition-all hover:bg-glow-soft"
-                >
-                  <Play className="h-4 w-4 fill-ink" />
-                  {prog ? `${resumePct}%` : t("detail.play")}
-                </button>
+                {movie.type !== "series" && (
+                  <button
+                    onClick={() => handlePlay(movie)}
+                    className="flex items-center gap-2.5 rounded-full bg-glow px-6 py-2.5 font-sans text-sm font-semibold text-ink transition-all hover:bg-glow-soft"
+                  >
+                    <Play className="h-4 w-4 fill-ink" />
+                    {prog ? `${resumePct}%` : t("detail.play")}
+                  </button>
+                )}
                 <button
                   onClick={() => toggleList(movie.id)}
                   className={cn(
@@ -192,6 +220,64 @@ export function MovieDetailModal() {
                 <Credit icon={<Film className="h-3.5 w-3.5" />} label={t("detail.genre")} value={tg(movie.genre)} />
                 <Credit icon={<User className="h-3.5 w-3.5" />} label={t("detail.cast")} value={movie.cast || "—"} />
               </div>
+
+              {/* episodes — only for series */}
+              {movie.type === "series" && Object.keys(episodes).length > 0 && (
+                <div className="mt-6 border-t border-hairline pt-5">
+                  <div className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-glow-soft">
+                    <Tv className="h-3.5 w-3.5" />
+                    Episodes
+                  </div>
+
+                  {/* season selector */}
+                  <div className="mb-4 flex flex-wrap gap-2">
+                    {Object.keys(episodes).map(Number).sort((a, b) => a - b).map((s) => (
+                      <button
+                        key={s}
+                        onClick={() => setSelectedSeason(s)}
+                        className={`rounded-md px-3 py-1.5 font-mono text-xs transition-colors ${
+                          selectedSeason === s
+                            ? "bg-glow text-ink"
+                            : "border border-hairline text-ash hover:border-glow/40 hover:text-bone"
+                        }`}
+                      >
+                        {language === "es" ? "Temporada " : language === "uk" ? "Сезон " : "Season "}{s}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* episode list */}
+                  <div className="max-h-60 space-y-1.5 overflow-y-auto rfx-scroll">
+                    {(episodes[selectedSeason] || []).map((ep) => (
+                      <button
+                        key={ep.id}
+                        onClick={() => {
+                          if (ep.videoUrl) {
+                            // play the episode — set videoUrl on the movie temporarily
+                            closeDetail();
+                            play({ ...movie, videoUrl: ep.videoUrl } as any);
+                          }
+                        }}
+                        disabled={!ep.videoUrl}
+                        className="flex w-full items-center gap-3 rounded-lg border border-hairline/60 bg-ink/40 px-3 py-2.5 text-left transition-colors hover:border-glow/30 hover:bg-ink-3 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-ink-3 font-mono text-xs text-glow-soft">
+                          {ep.episode}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate font-sans text-sm text-bone">{ep.title || `Episode ${ep.episode}`}</div>
+                          <div className="font-mono text-[10px] text-ash">
+                            S{ep.season}E{ep.episode}
+                          </div>
+                        </div>
+                        {ep.videoUrl && (
+                          <Play className="h-4 w-4 shrink-0 fill-glow text-glow" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </>
         )}

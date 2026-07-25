@@ -19,10 +19,12 @@ export function BulkImport() {
   const [result, setResult] = useState<{
     matched: number;
     created: number;
+    episodesAdded: number;
     notFound: number[];
     malformed: number;
     updatedTitles: string[];
     createdTitles: string[];
+    episodeDetails: { series: string; season: number; episode: number }[];
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const qc = useQueryClient();
@@ -84,10 +86,10 @@ export function BulkImport() {
           </p>
 
           <div className="rounded-md border border-hairline bg-ink p-3 font-mono text-[11px] leading-relaxed text-ash">
-            <div className="mb-1 text-glow-soft"># direct video files OR embed URLs both work</div>
+            <div className="mb-1 text-glow-soft"># movies and TV episodes both work</div>
             https://your-host.com/278<br />
-            https://your-host.com/embed/movie/238<br />
-            https://your-host.com/155
+            https://your-host.com/tv/1399/1/1<br />
+            https://your-host.com/tv/1399/1/2
           </div>
 
           <textarea
@@ -121,6 +123,12 @@ export function BulkImport() {
                     {result.created} new film{result.created === 1 ? "" : "s"} added
                   </span>
                 )}
+                {result.episodesAdded > 0 && (
+                  <span className="flex items-center gap-1.5">
+                    <Plus className="h-4 w-4 text-glow-soft" />
+                    {result.episodesAdded} episode{result.episodesAdded === 1 ? "" : "s"} added
+                  </span>
+                )}
               </div>
 
               {result.updatedTitles.length > 0 && (
@@ -147,6 +155,21 @@ export function BulkImport() {
                     {result.createdTitles.map((t) => (
                       <div key={t} className="font-sans text-xs text-bone/80">
                         + {t}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {result.episodeDetails && result.episodeDetails.length > 0 && (
+                <div>
+                  <div className="mb-1 font-mono text-[10px] uppercase tracking-[0.15em] text-glow-soft">
+                    Episodes added
+                  </div>
+                  <div className="max-h-24 overflow-y-auto rfx-scroll space-y-1">
+                    {result.episodeDetails.map((ep, i) => (
+                      <div key={i} className="font-sans text-xs text-bone/80">
+                        + {ep.series} — S{ep.season}E{ep.episode}
                       </div>
                     ))}
                   </div>

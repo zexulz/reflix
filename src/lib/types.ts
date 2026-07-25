@@ -61,6 +61,16 @@ export type MovieInput = {
   isEditorsPick: boolean;
 };
 
+export type Episode = {
+  id: string;
+  seriesId: string;
+  season: number;
+  episode: number;
+  title: string;
+  videoUrl: string | null;
+  createdAt: string;
+};
+
 export function formatRuntime(minutes: number): string {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
