@@ -47,12 +47,17 @@ async function createMovieFromTmdb(tmdbId: number, videoUrl: string) {
 }
 
 // ── Create or find a series record from TMDB TV ──
+// IMPORTANT: TMDB IDs are shared between movies and TV shows (e.g. 5920 is
+// both "Le Mans" the movie and "The Mentalist" the TV show). When a TV URL
+// is detected, we MUST use the /tv/ endpoint, never /movie/. If a movie with
+// the same tmdbId already exists, we overwrite it with the TV show data.
 async function getOrCreateSeries(tmdbId: number) {
-  // check if series already exists
+  // check if a series with this tmdbId already exists
   const existing = await db.movie.findFirst({ where: { tmdbId, type: "series" } });
   if (existing) return existing;
 
   if (!TMDB_KEY) return null;
+  // ALWAYS use /tv/ endpoint — never /movie/
   const res = await fetch(`${TMDB_BASE}/tv/${tmdbId}?api_key=${TMDB_KEY}`);
   if (!res.ok) return null;
   const d = await res.json();
@@ -66,9 +71,27 @@ async function getOrCreateSeries(tmdbId: number) {
   const posterUrl = d.poster_path ? `${IMG_BASE}${d.poster_path}` : "";
   const backdropUrl = d.backdrop_path ? `${IMG_BASE}${d.backdrop_path}` : null;
 
+  // If a record with this tmdbId already exists (e.g. as a movie), overwrite
+  // ALL its fields with the TV show data. This fixes the case where a movie
+  // was created first (e.g. "Le Mans" for tmdbId 5920) and then TV episodes
+  // were pasted — the record should become "The Mentalist" (the TV show).
   return db.movie.upsert({
     where: { tmdbId },
-    update: { type: "series" },
+    update: {
+      title: name,
+      slug: `${slugify(name)}-${Date.now().toString(36)}`,
+      logline,
+      description: logline,
+      posterUrl,
+      backdropUrl,
+      type: "series",
+      duration: d.episode_run_time?.[0] || 0,
+      year,
+      genre,
+      director,
+      rating,
+      isNew: year >= new Date().getFullYear() - 1,
+    },
     create: {
       title: name, slug: `${slugify(name)}-${Date.now().toString(36)}`,
       logline, description: logline, posterUrl, backdropUrl,
