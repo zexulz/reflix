@@ -34,6 +34,18 @@ export function useMovies() {
   });
 }
 
+// Series hook — fetches all series for the Series reel
+export function useSeries() {
+  return useQuery({
+    queryKey: ["series"],
+    queryFn: async () => {
+      const res = await fetch("/api/series", { credentials: "include" });
+      const { movies } = await res.json();
+      return movies;
+    },
+  });
+}
+
 // Admin hook — fetches ALL movies (no limit) for the catalog table
 export function useAllMovies() {
   return useQuery({

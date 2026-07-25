@@ -3,7 +3,7 @@
 import { useEffect, useMemo } from "react";
 import { Providers } from "./providers";
 import { useApp } from "@/lib/store";
-import { useMe, useMovies, useProgress } from "@/lib/hooks";
+import { useMe, useMovies, useProgress, useSeries } from "@/lib/hooks";
 import { Header } from "@/components/reflix/header";
 import { Hero } from "@/components/reflix/hero";
 import { Reel } from "@/components/reflix/reel";
@@ -39,6 +39,7 @@ function App() {
 
   const me = useMe();
   const moviesQ = useMovies();
+  const seriesQ = useSeries();
   const progressQ = useProgress();
 
   // sync session into store
@@ -47,6 +48,7 @@ function App() {
   }, [me.data, setUser]);
 
   const movies = useMemo<Movie[]>(() => moviesQ.data ?? [], [moviesQ.data]);
+  const series = useMemo<Movie[]>(() => seriesQ.data ?? [], [seriesQ.data]);
 
   const progressMap = useMemo(() => {
     const map: Record<string, { position: number; duration: number }> = {};
@@ -82,6 +84,7 @@ function App() {
           ) : (
             <Browse
               movies={movies}
+              series={series}
               user={user}
               myList={myList}
               progressMap={progressMap}
@@ -104,8 +107,10 @@ function Browse({
   myList,
   progressMap,
   onSignIn,
+  series,
 }: {
   movies: Movie[];
+  series: Movie[];
   user: { id: string; role: "USER" | "ADMIN" } | null;
   myList: string[];
   progressMap: Record<string, { position: number; duration: number }>;
@@ -219,11 +224,10 @@ function Browse({
     }
   }
 
-  // Series reel — all TV series in the catalog (type === "series")
-  const series = fullLengthMovies.filter((m) => m.type === "series");
-  if (series.length >= 4) {
-    series.sort(byPopularity);
-    reels.push({ id: "reel-series", title: t("reel.series"), items: series });
+  // Series reel — uses the dedicated series API (separate from movies)
+  if (series.length >= 1) {
+    const sortedSeries = [...series].sort(byPopularity);
+    reels.push({ id: "reel-series", title: t("reel.series"), items: sortedSeries });
   }
 
   // Full catalog — sorted by popularity

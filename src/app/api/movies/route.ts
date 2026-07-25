@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
           { cast: { contains: q, mode: "insensitive" as const } },
         ],
       }
-    : {};
+    : { type: "movie" }; // browse: only movies (series shown in separate reel)
 
   // For search queries, return all matches (needed for search results).
   // For browse (no query), limit to 200 movies sorted by popularity to keep
