@@ -167,7 +167,10 @@ function Browse({
   }
 
   const myListMovies = myList
-    .map((id) => fullLengthMovies.find((m) => m.id === id))
+    .map((id) => {
+      // search both movies and series
+      return fullLengthMovies.find((m) => m.id === id) || series.find((m) => m.id === id);
+    })
     .filter((m): m is Movie => !!m);
   if (user) {
     reels.push({

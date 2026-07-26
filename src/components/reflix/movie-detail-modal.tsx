@@ -98,7 +98,7 @@ export function MovieDetailModal() {
   return (
     <Dialog open={open} onOpenChange={(o) => !o && closeDetail()}>
       <DialogContent
-        className="max-h-[92vh] w-[96vw] max-w-3xl overflow-hidden rounded-xl border-hairline bg-ink-2 p-0 rfx-scroll"
+        className="max-h-[92vh] w-[96vw] max-w-3xl overflow-y-auto overflow-x-hidden rounded-xl border-hairline bg-ink-2 p-0 rfx-scroll"
       >
         {movie && (
           <>
@@ -246,8 +246,8 @@ export function MovieDetailModal() {
                     ))}
                   </div>
 
-                  {/* episode list */}
-                  <div className="max-h-60 space-y-1.5 overflow-y-auto rfx-scroll">
+                  {/* episode list — taller on larger screens, scrollable */}
+                  <div className="max-h-[50vh] space-y-1.5 overflow-y-auto rfx-scroll">
                     {(episodes[selectedSeason] || []).map((ep) => (
                       <button
                         key={ep.id}

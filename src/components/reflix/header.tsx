@@ -52,7 +52,20 @@ export function Header() {
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    // The target reel might be inside a LazyReel that hasn't rendered yet.
+    // Try to find it; if not found, scroll down progressively to trigger
+    // lazy rendering, then try again.
+    const tryScroll = (attempts: number) => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      } else if (attempts > 0) {
+        // scroll down a chunk to trigger lazy reels to render
+        window.scrollBy({ top: 600, behavior: "auto" });
+        setTimeout(() => tryScroll(attempts - 1), 200);
+      }
+    };
+    tryScroll(10);
   };
 
   const initials = user?.name
