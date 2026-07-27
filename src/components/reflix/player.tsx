@@ -67,11 +67,19 @@ export function Player() {
   const [videoError, setVideoError] = useState(false);
 
   // ── Subtitle overlay state ──
+  // For iframe embeds we can't read the video's real timecode (cross-origin),
+  // so we run a manual playhead the USER syncs to the video. They hit "Sync"
+  // when the video actually starts playing (after ads/loading), then nudge
+  // ±5s if it drifts. This is the only reliable way to sync subtitles to a
+  // third-party embed.
   const [subtitleCues, setSubtitleCues] = useState<SubtitleCue[]>([]);
   const [activeCue, setActiveCue] = useState<string | null>(null);
   const [subsEnabled, setSubsEnabled] = useState(true);
-  const [iframeTimer, setIframeTimer] = useState(0);
-  const iframeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [subPlayhead, setSubPlayhead] = useState(0);      // seconds, inferred video position
+  const [subOffset, setSubOffset] = useState(0);          // seconds, user correction
+  const [subPanelOpen, setSubPanelOpen] = useState(false);
+  const playheadRef = useRef(0);
+  const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const activeCueRef = useRef<string | null>(null);
   const subtitleUrl = (movie as any)?.subtitleUrl || (movie as any)?.episodeSubtitleUrl || null;
 
@@ -220,60 +228,65 @@ export function Player() {
     return () => { cancelled = true; };
   }, [subtitleUrl]);
 
-  // ── For iframe embeds: run a timer to sync subtitles ──
-  // (can't read the iframe's internal timecode due to cross-origin)
-  // isDirectVideo is computed later in the component, so we detect it here
-  // by checking the URL pattern directly.
+  // ── For iframe embeds: run a manual playhead the user can sync ──
+  // We can't read the iframe's internal timecode (cross-origin), so we count
+  // seconds ourselves. The user hits "Sync" when the video actually starts
+  // playing — that zeros the effective subtitle time. They can also nudge
+  // ±5s or drag the offset slider to fine-tune.
   useEffect(() => {
     const isDirect = movie?.videoUrl ? /\.(mp4|webm|m4v|ogg|ogv|m3u8|mov)(\?|#|$)/i.test(movie.videoUrl) : false;
     if (!movie || isDirect || !subtitleCues.length) {
-      if (iframeTimerRef.current) {
-        clearInterval(iframeTimerRef.current);
-        iframeTimerRef.current = null;
-      }
+      if (tickRef.current) { clearInterval(tickRef.current); tickRef.current = null; }
       return;
     }
-
-    // Start timer when playing, pause when paused
+    // only tick while "playing" (not paused/finished/errored)
     if (playing && !finished && !videoError) {
-      iframeTimerRef.current = setInterval(() => {
-        setIframeTimer((t) => t + 1);
+      tickRef.current = setInterval(() => {
+        playheadRef.current += 1;
+        setSubPlayhead(playheadRef.current);
       }, 1000);
     } else {
-      if (iframeTimerRef.current) {
-        clearInterval(iframeTimerRef.current);
-        iframeTimerRef.current = null;
-      }
+      if (tickRef.current) { clearInterval(tickRef.current); tickRef.current = null; }
     }
-
     return () => {
-      if (iframeTimerRef.current) clearInterval(iframeTimerRef.current);
+      if (tickRef.current) { clearInterval(tickRef.current); tickRef.current = null; }
     };
   }, [movie, playing, finished, videoError, subtitleCues.length]);
 
+  // ── Reset playhead when the movie changes ──
+  useEffect(() => {
+    playheadRef.current = 0;
+    // reset is intentional on movie change; the cascading render is negligible
+    /* eslint-disable react-hooks/set-state-in-effect */
+    setSubPlayhead(0);
+    setSubOffset(0);
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [movie?.id]);
+
+  // ── User sync actions ──
+  // "Sync now": the video just actually started playing, so zero the
+  // effective subtitle time. We do this by setting offset = -playhead.
+  const syncSubs = useCallback(() => {
+    setSubOffset(-playheadRef.current);
+  }, []);
+  // Nudge the offset by a few seconds (negative = subtitles later, positive = earlier)
+  const nudgeSubs = useCallback((delta: number) => {
+    setSubOffset((o) => o + delta);
+  }, []);
+
   // ── Update active subtitle cue ──
   useEffect(() => {
-    if (!subtitleCues.length || !subsEnabled) {
-      return;
-    }
-
-    // For direct video: use actual video timecode
-    // For iframe: use the timer
+    if (!subtitleCues.length || !subsEnabled) return;
     const isDirect = movie?.videoUrl ? /\.(mp4|webm|m4v|ogg|ogv|m3u8|mov)(\?|#|$)/i.test(movie.videoUrl) : false;
-    const time = isDirect ? current : iframeTimer;
+    // direct video: use the real timecode. iframe: use the synced playhead + offset.
+    const time = isDirect ? current : (subPlayhead + subOffset);
     const cue = findActiveCue(subtitleCues, time);
     const cueText = cue ? cue.text : null;
-    // Use a microtask to avoid synchronous setState in effect
     if (cueText !== activeCueRef.current) {
       activeCueRef.current = cueText;
       queueMicrotask(() => setActiveCue(cueText));
     }
-  }, [current, iframeTimer, subtitleCues, subsEnabled, movie?.videoUrl]);
-
-  // Reset timer when movie changes
-  useEffect(() => {
-    queueMicrotask(() => setIframeTimer(0));
-  }, [movie?.id]);
+  }, [current, subPlayhead, subOffset, subtitleCues, subsEnabled, movie?.videoUrl]);
 
   // save on unmount
   useEffect(() => {
@@ -437,16 +450,92 @@ export function Player() {
         </div>
       )}
 
-      {/* ── Subtitle overlay ── renders on top of both video and iframe */}
+      {/* ── Subtitle overlay ── renders on top of both video and iframe.
+          Sits higher up (bottom-28) on iframe embeds so it clears the
+          sync control bar; lower (bottom-24) on native video. */}
       {activeCue && subsEnabled && !finished && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-24 z-[6] flex justify-center px-4 sm:px-8">
-          <div className="max-w-2xl rounded-md bg-ink/80 px-4 py-2 text-center backdrop-blur-sm">
+        <div className={cn(
+          "pointer-events-none absolute inset-x-0 z-[6] flex justify-center px-4 sm:px-8",
+          isDirectVideo ? "bottom-24" : "bottom-32"
+        )}>
+          <div className="max-w-2xl rounded-md bg-ink/85 px-4 py-2 text-center backdrop-blur-sm">
             {activeCue.split("\n").map((line, i) => (
               <p key={i} className="font-sans text-base leading-snug text-bone sm:text-lg">
                 {line}
               </p>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* ── Subtitle sync control bar ── (iframe embeds only)
+          Because we can't read the embed's real timecode, the user syncs
+          manually: hit "Sync" the moment the video actually starts playing
+          (after the ads/loading), then nudge ±5s if it drifts. */}
+      {!isDirectVideo && !noStream && !videoError && subtitleCues.length > 0 && !finished && (
+        <div
+          className="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-ink/95 to-transparent px-4 pb-4 pt-10 sm:px-8"
+        >
+          <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-center gap-2 sm:gap-3">
+            {/* CC on/off */}
+            <button
+              onClick={() => setSubsEnabled(!subsEnabled)}
+              aria-label={subsEnabled ? "Disable subtitles" : "Enable subtitles"}
+              className={cn(
+                "flex h-9 items-center gap-1.5 rounded-full border px-3 font-sans text-xs font-medium transition-colors",
+                subsEnabled
+                  ? "border-glow/50 bg-glow/15 text-glow"
+                  : "border-hairline bg-ink/60 text-bone/60 hover:text-bone"
+              )}
+            >
+              <Captions className="h-4 w-4" />
+              {subsEnabled ? "On" : "Off"}
+            </button>
+
+            {/* The big sync button — hit this when the video actually starts */}
+            <button
+              onClick={syncSubs}
+              className="flex h-9 items-center gap-1.5 rounded-full bg-glow px-4 font-sans text-xs font-semibold text-ink transition-transform hover:scale-105"
+              title="Press this the moment the video actually starts playing — it lines the subtitles up"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              Sync to video
+            </button>
+
+            {/* Nudge buttons */}
+            <button
+              onClick={() => nudgeSubs(-5)}
+              className="flex h-9 items-center gap-1 rounded-full border border-hairline bg-ink/60 px-3 font-mono text-xs text-bone transition-colors hover:border-glow/40 hover:text-glow-soft"
+              title="Subtitles 5s later"
+            >
+              −5s
+            </button>
+            <button
+              onClick={() => nudgeSubs(5)}
+              className="flex h-9 items-center gap-1 rounded-full border border-hairline bg-ink/60 px-3 font-mono text-xs text-bone transition-colors hover:border-glow/40 hover:text-glow-soft"
+              title="Subtitles 5s earlier"
+            >
+              +5s
+            </button>
+
+            {/* Current effective subtitle time */}
+            <div className="flex h-9 items-center gap-2 rounded-full border border-hairline bg-ink/60 px-3 font-mono text-[11px] tabular-nums text-bone/70">
+              <span className="text-ash">sub</span>
+              {formatTime(Math.max(0, subPlayhead + subOffset))}
+              {subOffset !== 0 && (
+                <span className={subOffset < 0 ? "text-glow-soft" : "text-oxblood"}>
+                  ({subOffset > 0 ? "+" : ""}{subOffset}s)
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Hint text — only shows before the first sync */}
+          {subOffset === 0 && subPlayhead < 3 && (
+            <p className="mt-2 text-center font-sans text-[11px] text-glow-soft/80">
+              Wait for the video to actually start playing, then hit <span className="font-semibold">Sync to video</span> to line up the subtitles.
+            </p>
+          )}
         </div>
       )}
 
