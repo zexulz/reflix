@@ -46,6 +46,22 @@ export function useSeries() {
   });
 }
 
+// Episodes hook — fetches all episodes for a series (grouped by season)
+export function useEpisodes(seriesId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["episodes", seriesId],
+    queryFn: async () => {
+      if (!seriesId) return [];
+      const res = await fetch(`/api/series/${seriesId}/episodes`, {
+        credentials: "include",
+      });
+      const data = await res.json();
+      return data.episodes as any[];
+    },
+    enabled: !!seriesId,
+  });
+}
+
 // Admin hook — fetches ALL movies (no limit) for the catalog table
 export function useAllMovies() {
   return useQuery({

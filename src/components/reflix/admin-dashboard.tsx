@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, Pencil, Trash2, Star, Film, Loader2, Lock, Upload, Captions } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Plus, Pencil, Trash2, Star, Film, Loader2, Lock, Upload, Captions, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +34,27 @@ export function AdminDashboard() {
   const del = useDeleteMovie();
 
   const [deleteTarget, setDeleteTarget] = useState<Movie | null>(null);
+  const [query, setQuery] = useState("");
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 50;
+
+  const list = movies ?? [];
+  // client-side filter + paginate so 5,900 rows don't freeze the page.
+  // Hooks must run before any early return.
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return list;
+    return list.filter(
+      (m) =>
+        m.title.toLowerCase().includes(q) ||
+        (m.director || "").toLowerCase().includes(q) ||
+        (m.genre || "").toLowerCase().includes(q) ||
+        String(m.year).includes(q)
+    );
+  }, [list, query]);
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount - 1);
+  const pageRows = filtered.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE);
 
   if (!user) {
     return (
@@ -57,7 +78,6 @@ export function AdminDashboard() {
     );
   }
 
-  const list = movies ?? [];
   const featuredCount = list.filter((m) => m.featured).length;
   const newCount = list.filter((m) => m.isNew).length;
 
@@ -129,8 +149,50 @@ export function AdminDashboard() {
         <Stat label="With stream" value={list.filter((m) => m.videoUrl).length} />
       </div>
 
+      {/* search + pagination bar */}
+      <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative w-full sm:max-w-xs">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ash" />
+          <input
+            value={query}
+            onChange={(e) => { setQuery(e.target.value); setPage(0); }}
+            placeholder="Search title, director, genre, year…"
+            className="w-full rounded-full border border-hairline bg-ink-2 py-2 pl-9 pr-3 font-sans text-sm text-bone placeholder:text-ash/60 focus:border-glow/40 focus:outline-none"
+          />
+        </div>
+        <div className="flex items-center gap-3 font-mono text-[11px] text-ash">
+          <span>
+            {filtered.length === 0
+              ? "0 results"
+              : `Showing ${safePage * PAGE_SIZE + 1}–${Math.min(
+                  (safePage + 1) * PAGE_SIZE,
+                  filtered.length
+                )} of ${filtered.length}`}
+          </span>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={safePage === 0}
+              aria-label="Previous page"
+              className="flex h-7 w-7 items-center justify-center rounded-md border border-hairline text-ash transition-colors hover:text-bone disabled:opacity-30"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <span className="tabular-nums">{safePage + 1} / {pageCount}</span>
+            <button
+              onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+              disabled={safePage >= pageCount - 1}
+              aria-label="Next page"
+              className="flex h-7 w-7 items-center justify-center rounded-md border border-hairline text-ash transition-colors hover:text-bone disabled:opacity-30"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* table */}
-      <div className="mt-8 overflow-hidden rounded-xl border border-hairline">
+      <div className="mt-3 overflow-hidden rounded-xl border border-hairline">
         {isLoading ? (
           <div className="flex items-center justify-center gap-2 py-20 text-ash">
             <Loader2 className="h-4 w-4 animate-spin" /> Loading catalog…
@@ -139,6 +201,12 @@ export function AdminDashboard() {
           <div className="py-20 text-center">
             <p className="font-sans text-sm text-ash">
               No films yet. Add your first title to light the marquee.
+            </p>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="py-20 text-center">
+            <p className="font-sans text-sm text-ash">
+              No films match “{query}”. Try a different search.
             </p>
           </div>
         ) : (
@@ -156,7 +224,7 @@ export function AdminDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {list.map((m) => (
+                {pageRows.map((m) => (
                   <tr
                     key={m.id}
                     className="border-b border-hairline/60 transition-colors last:border-0 hover:bg-ink-2/50"
