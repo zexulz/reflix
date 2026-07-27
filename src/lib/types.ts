@@ -14,6 +14,7 @@ export type Movie = {
   posterUrl: string;       // empty string → typographic title-card fallback
   backdropUrl: string | null;
   videoUrl: string | null; // null → "no stream attached" state in the player
+  subtitleUrl?: string | null; // optional subtitle URL (.srt/.vtt)
   imdbId: string | null;
   tmdbId: number | null;
   type?: string; // "movie" | "series"
@@ -68,6 +69,7 @@ export type Episode = {
   episode: number;
   title: string;
   videoUrl: string | null;
+  subtitleUrl: string | null;
   createdAt: string;
 };
 

@@ -117,11 +117,11 @@ async function getEpisodeTitle(tmdbId: number, season: number, episode: number):
 }
 
 // ── Upsert an episode ──
-async function upsertEpisode(seriesId: string, season: number, episode: number, videoUrl: string, title: string) {
+async function upsertEpisode(seriesId: string, season: number, episode: number, videoUrl: string, title: string, subtitleUrl?: string) {
   return db.episode.upsert({
     where: { seriesId_season_episode: { seriesId, season, episode } },
-    update: { videoUrl },
-    create: { seriesId, season, episode, videoUrl, title },
+    update: { videoUrl, ...(subtitleUrl ? { subtitleUrl } : {}) },
+    create: { seriesId, season, episode, videoUrl, title, ...(subtitleUrl ? { subtitleUrl } : {}) },
   });
 }
 
@@ -152,17 +152,27 @@ export async function POST(req: NextRequest) {
       if (!line || line.startsWith("#")) continue;
 
       // ── Detect URL type ──
+      // Parse optional subtitle suffix: URL|sub:SUBTITLE_URL
+      // e.g. https://host.com/tv/5920/1/1|sub:https://host.com/subs/5920_1_1.srt
+      let subtitleUrl: string | undefined;
+      let cleanLine = line;
+      const subMatch = line.match(/\|sub:(.+)$/);
+      if (subMatch) {
+        subtitleUrl = subMatch[1].trim();
+        cleanLine = line.replace(/\|sub:.+$/, "").trim();
+      }
+
       // TV URL format:  host.com/tv/{tmdbId}/{season}/{episode}
       // Movie URL format: host.com/{tmdbId}  or  host.com/movie/{tmdbId}
-      const tvMatch = line.match(/\/tv\/(\d+)\/(\d+)\/(\d+)/);
-      const movieMatch = line.match(/\/(\d{1,8})(?:\/?|\?|#|$)/);
+      const tvMatch = cleanLine.match(/\/tv\/(\d+)\/(\d+)\/(\d+)/);
+      const movieMatch = cleanLine.match(/\/(\d{1,8})(?:\/?|\?|#|$)/);
 
       if (tvMatch) {
         // ── TV episode URL ──
         const tmdbId = Number(tvMatch[1]);
         const season = Number(tvMatch[2]);
         const episode = Number(tvMatch[3]);
-        const url = line;
+        const url = cleanLine;
 
         // get or create the series
         const series = await getOrCreateSeries(tmdbId);
@@ -174,24 +184,28 @@ export async function POST(req: NextRequest) {
         // fetch episode title from TMDB
         const epTitle = await getEpisodeTitle(tmdbId, season, episode);
 
-        // upsert the episode
-        await upsertEpisode(series.id, season, episode, url, epTitle || `S${season}E${episode}`);
+        // upsert the episode (with optional subtitle URL)
+        await upsertEpisode(series.id, season, episode, url, epTitle || `S${season}E${episode}`, subtitleUrl);
         result.episodesAdded.push({ series: series.title, season, episode });
 
       } else if (movieMatch) {
         // ── Movie URL ──
         const tmdbId = Number(movieMatch[1]);
-        const url = line;
+        const url = cleanLine;
 
         // check if it already exists
         const existing = await db.movie.findFirst({ where: { tmdbId } });
         if (existing) {
-          await db.movie.update({ where: { id: existing.id }, data: { videoUrl: url } });
+          await db.movie.update({ where: { id: existing.id }, data: { videoUrl: url, ...(subtitleUrl ? { subtitleUrl } : {}) } });
           result.matched.push({ tmdbId, title: existing.title });
         } else {
           // try movie first, then TV (for series without episode info)
           const created = await createMovieFromTmdb(tmdbId, url);
           if (created) {
+            // if a subtitle URL was provided, save it
+            if (subtitleUrl) {
+              await db.movie.update({ where: { id: created.id }, data: { subtitleUrl } });
+            }
             result.created.push({ tmdbId, title: created.title });
           } else {
             result.notFound.push(tmdbId);

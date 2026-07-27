@@ -52,6 +52,10 @@ type State = {
   // bulk-import modal — paste IMDb ID + URL pairs
   bulkImportOpen: boolean;
   setBulkImportOpen: (o: boolean) => void;
+
+  // subtitle bulk uploader
+  subtitleUploaderOpen: boolean;
+  setSubtitleUploaderOpen: (o: boolean) => void;
 };
 
 export const useApp = create<State>()(
@@ -105,6 +109,9 @@ export const useApp = create<State>()(
 
       bulkImportOpen: false,
       setBulkImportOpen: (o) => set({ bulkImportOpen: o }),
+
+      subtitleUploaderOpen: false,
+      setSubtitleUploaderOpen: (o) => set({ subtitleUploaderOpen: o }),
     }),
     {
       name: "reflix-store",

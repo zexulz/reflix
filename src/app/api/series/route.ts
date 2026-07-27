@@ -13,6 +13,7 @@ export async function GET() {
       posterUrl: true,
       backdropUrl: true,
       videoUrl: true,
+      subtitleUrl: true,
       tmdbId: true,
       type: true,
       duration: true,

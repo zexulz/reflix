@@ -43,6 +43,7 @@ export async function GET(req: NextRequest) {
       posterUrl: true,
       backdropUrl: true,
       videoUrl: true,
+      subtitleUrl: true,
       tmdbId: true,
       type: true,
       imdbRank: true,

@@ -11,11 +11,13 @@ import {
   X,
   RotateCcw,
   RotateCw,
+  Captions,
 } from "lucide-react";
 import { useApp } from "@/lib/store";
 import { useProgress, useSaveProgress } from "@/lib/hooks";
 import { formatTime } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { parseSrt, findActiveCue, type SubtitleCue } from "@/lib/subtitles";
 
 /*
   toEmbedUrl — converts common video URLs to their embeddable form so they
@@ -27,19 +29,23 @@ import { cn } from "@/lib/utils";
     - Direct video files (.mp4, .webm, etc.) → returned as-is (native <video>)
     - Everything else → returned as-is (assumed to be a generic embed URL)
 */
-function toEmbedUrl(url: string): string {
+function toEmbedUrl(url: string, subtitleUrl?: string | null): string {
   if (!url) return "";
-  // already an embed URL — use as-is
-  if (url.includes("/embed/")) return url;
   // YouTube watch URL
   const ytWatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{11})/);
   if (ytWatch) return `https://www.youtube.com/embed/${ytWatch[1]}?autoplay=1&rel=0&modestbranding=1`;
   // Vimeo
   const vimeo = url.match(/vimeo\.com\/(\d+)/);
   if (vimeo) return `https://player.vimeo.com/video/${vimeo[1]}?autoplay=1`;
-  // everything else — assume it's a generic embed URL (the embed service
-  // handles its own player)
-  return url;
+
+  // For embed URLs — append sub_url parameter if a subtitle is available.
+  // Most embed services accept sub_url as a URL-encoded .srt/.vtt URL.
+  let finalUrl = url;
+  if (subtitleUrl) {
+    const separator = finalUrl.includes("?") ? "&" : "?";
+    finalUrl += `${separator}sub_url=${encodeURIComponent(subtitleUrl)}`;
+  }
+  return finalUrl;
 }
 
 export function Player() {
@@ -59,6 +65,15 @@ export function Player() {
   const [controlsVisible, setControlsVisible] = useState(true);
   const [finished, setFinished] = useState(false);
   const [videoError, setVideoError] = useState(false);
+
+  // ── Subtitle overlay state ──
+  const [subtitleCues, setSubtitleCues] = useState<SubtitleCue[]>([]);
+  const [activeCue, setActiveCue] = useState<string | null>(null);
+  const [subsEnabled, setSubsEnabled] = useState(true);
+  const [iframeTimer, setIframeTimer] = useState(0);
+  const iframeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const activeCueRef = useRef<string | null>(null);
+  const subtitleUrl = (movie as any)?.subtitleUrl || (movie as any)?.episodeSubtitleUrl || null;
 
   const { data: progress } = useProgress();
   const saveProgress = useSaveProgress();
@@ -185,6 +200,81 @@ export function Player() {
     return () => window.removeEventListener("keydown", onKey);
   }, [movie]);
 
+  // ── Fetch + parse subtitle file when a movie/episode loads ──
+  useEffect(() => {
+    if (!subtitleUrl) {
+      return;
+    }
+    let cancelled = false;
+    fetch(subtitleUrl)
+      .then((r) => r.text())
+      .then((text) => {
+        if (!cancelled) {
+          const cues = parseSrt(text);
+          setSubtitleCues(cues);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setSubtitleCues([]);
+      });
+    return () => { cancelled = true; };
+  }, [subtitleUrl]);
+
+  // ── For iframe embeds: run a timer to sync subtitles ──
+  // (can't read the iframe's internal timecode due to cross-origin)
+  // isDirectVideo is computed later in the component, so we detect it here
+  // by checking the URL pattern directly.
+  useEffect(() => {
+    const isDirect = movie?.videoUrl ? /\.(mp4|webm|m4v|ogg|ogv|m3u8|mov)(\?|#|$)/i.test(movie.videoUrl) : false;
+    if (!movie || isDirect || !subtitleCues.length) {
+      if (iframeTimerRef.current) {
+        clearInterval(iframeTimerRef.current);
+        iframeTimerRef.current = null;
+      }
+      return;
+    }
+
+    // Start timer when playing, pause when paused
+    if (playing && !finished && !videoError) {
+      iframeTimerRef.current = setInterval(() => {
+        setIframeTimer((t) => t + 1);
+      }, 1000);
+    } else {
+      if (iframeTimerRef.current) {
+        clearInterval(iframeTimerRef.current);
+        iframeTimerRef.current = null;
+      }
+    }
+
+    return () => {
+      if (iframeTimerRef.current) clearInterval(iframeTimerRef.current);
+    };
+  }, [movie, playing, finished, videoError, subtitleCues.length]);
+
+  // ── Update active subtitle cue ──
+  useEffect(() => {
+    if (!subtitleCues.length || !subsEnabled) {
+      return;
+    }
+
+    // For direct video: use actual video timecode
+    // For iframe: use the timer
+    const isDirect = movie?.videoUrl ? /\.(mp4|webm|m4v|ogg|ogv|m3u8|mov)(\?|#|$)/i.test(movie.videoUrl) : false;
+    const time = isDirect ? current : iframeTimer;
+    const cue = findActiveCue(subtitleCues, time);
+    const cueText = cue ? cue.text : null;
+    // Use a microtask to avoid synchronous setState in effect
+    if (cueText !== activeCueRef.current) {
+      activeCueRef.current = cueText;
+      queueMicrotask(() => setActiveCue(cueText));
+    }
+  }, [current, iframeTimer, subtitleCues, subsEnabled, movie?.videoUrl]);
+
+  // Reset timer when movie changes
+  useEffect(() => {
+    queueMicrotask(() => setIframeTimer(0));
+  }, [movie?.id]);
+
   // save on unmount
   useEffect(() => {
     return () => {
@@ -205,7 +295,7 @@ export function Player() {
   // embed URL (use <iframe> — for YouTube, Vimeo, or any embed service).
   const rawUrl = movie.videoUrl || "";
   const isDirectVideo = /\.(mp4|webm|m4v|ogg|ogv|m3u8|mov)(\?|#|$)/i.test(rawUrl);
-  const embedUrl = toEmbedUrl(rawUrl);
+  const embedUrl = toEmbedUrl(rawUrl, movie.subtitleUrl);
 
   return (
     <div
@@ -347,6 +437,19 @@ export function Player() {
         </div>
       )}
 
+      {/* ── Subtitle overlay ── renders on top of both video and iframe */}
+      {activeCue && subsEnabled && !finished && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-24 z-[6] flex justify-center px-4 sm:px-8">
+          <div className="max-w-2xl rounded-md bg-ink/80 px-4 py-2 text-center backdrop-blur-sm">
+            {activeCue.split("\n").map((line, i) => (
+              <p key={i} className="font-sans text-base leading-snug text-bone sm:text-lg">
+                {line}
+              </p>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* top bar */}
       <div
         className={cn(
@@ -481,6 +584,16 @@ export function Player() {
           </div>
 
           <div className="ml-auto flex items-center gap-3">
+            {/* CC subtitle toggle — only shows if subtitles are available */}
+            {subtitleCues.length > 0 && (
+              <button
+                onClick={() => setSubsEnabled(!subsEnabled)}
+                aria-label={subsEnabled ? "Disable subtitles" : "Enable subtitles"}
+                className={cn("transition-colors", subsEnabled ? "text-glow" : "text-bone/40 hover:text-bone/80")}
+              >
+                <Captions className="h-5 w-5" />
+              </button>
+            )}
             <button onClick={toggleFs} aria-label="Fullscreen" className="text-bone/80 hover:text-glow-soft">
               {isFs ? <Minimize className="h-5 w-5" /> : <Maximize className="h-5 w-5" />}
             </button>

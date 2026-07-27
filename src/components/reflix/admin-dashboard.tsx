@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Pencil, Trash2, Star, Film, Loader2, Lock, Upload } from "lucide-react";
+import { Plus, Pencil, Trash2, Star, Film, Loader2, Lock, Upload, Captions } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { TmdbSearch } from "./tmdb-search";
 import { BulkImport } from "./bulk-import";
+import { SubtitleUploader } from "./subtitle-uploader";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,6 +29,7 @@ export function AdminDashboard() {
   const openAuth = useApp((s) => s.openAuth);
   const openAdminForm = useApp((s) => s.openAdminForm);
   const setBulkImportOpen = useApp((s) => s.setBulkImportOpen);
+  const setSubtitleUploaderOpen = useApp((s) => s.setSubtitleUploaderOpen);
   const { data: movies, isLoading } = useAllMovies();
   const del = useDeleteMovie();
 
@@ -85,6 +87,14 @@ export function AdminDashboard() {
           </p>
         </div>
         <div className="flex shrink-0 gap-2">
+          <Button
+            onClick={() => setSubtitleUploaderOpen(true)}
+            variant="outline"
+            className="gap-2 rounded-full border-hairline bg-ink-2 text-bone hover:bg-ink-3 hover:text-glow-soft"
+          >
+            <Captions className="h-4 w-4" />
+            Upload subtitles
+          </Button>
           <Button
             onClick={() => setBulkImportOpen(true)}
             variant="outline"
@@ -228,6 +238,7 @@ export function AdminDashboard() {
 
       <MovieForm />
       <BulkImport />
+      <SubtitleUploader />
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
         <AlertDialogContent className="border-hairline bg-ink-2 text-bone">

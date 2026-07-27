@@ -86,10 +86,10 @@ export function BulkImport() {
           </p>
 
           <div className="rounded-md border border-hairline bg-ink p-3 font-mono text-[11px] leading-relaxed text-ash">
-            <div className="mb-1 text-glow-soft"># movies and TV episodes both work</div>
+            <div className="mb-1 text-glow-soft"># movies, TV episodes, and subtitles all work</div>
             https://your-host.com/278<br />
             https://your-host.com/tv/1399/1/1<br />
-            https://your-host.com/tv/1399/1/2
+            https://your-host.com/tv/1399/1/1|sub:https://subs.com/1399_1_1.srt
           </div>
 
           <textarea

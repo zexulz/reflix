@@ -36,6 +36,7 @@ model Movie {
   // hosted stream URL here via the admin dashboard. Until then the film
   // is browseable but shows a "no stream attached" state in the player.
   videoUrl       String?
+  subtitleUrl    String?  // URL to .srt or .vtt subtitle file (for movies)
   imdbId         String?
   tmdbId         Int?     @unique
   // "movie" or "series" — determines which TMDB endpoint to use
@@ -71,6 +72,7 @@ model Episode {
   episode     Int
   title       String   @default("")
   videoUrl    String?
+  subtitleUrl String?  // URL to .srt or .vtt subtitle file
   createdAt   DateTime @default(now())
 
   series      Movie    @relation(fields: [seriesId], references: [id], onDelete: Cascade)

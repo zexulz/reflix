@@ -255,7 +255,7 @@ export function MovieDetailModal() {
                           if (ep.videoUrl) {
                             // play the episode — set videoUrl on the movie temporarily
                             closeDetail();
-                            play({ ...movie, videoUrl: ep.videoUrl } as any);
+                            play({ ...movie, videoUrl: ep.videoUrl, subtitleUrl: ep.subtitleUrl } as any);
                           }
                         }}
                         disabled={!ep.videoUrl}
