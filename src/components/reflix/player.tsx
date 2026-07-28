@@ -14,6 +14,7 @@ import {
   Captions,
 } from "lucide-react";
 import { useApp } from "@/lib/store";
+import { useLanguage } from "@/lib/lang-store";
 import { useProgress, useSaveProgress } from "@/lib/hooks";
 import { formatTime } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -209,8 +210,16 @@ export function Player() {
   }, [movie]);
 
   // ── Fetch + parse subtitle file when a movie/episode loads ──
+  // Subtitles are Ukrainian-only — only fetch when the user selected 🇺🇦
+  // on the home page language gate.
+  const language = useLanguage((s) => s.language);
+  const subsAllowed = language === "uk";
+
   useEffect(() => {
-    if (!subtitleUrl) {
+    if (!subtitleUrl || !subsAllowed) {
+      /* eslint-disable react-hooks/set-state-in-effect */
+      setSubtitleCues([]);
+      /* eslint-enable react-hooks/set-state-in-effect */
       return;
     }
     let cancelled = false;
@@ -226,7 +235,7 @@ export function Player() {
         if (!cancelled) setSubtitleCues([]);
       });
     return () => { cancelled = true; };
-  }, [subtitleUrl]);
+  }, [subtitleUrl, subsAllowed]);
 
   // ── For iframe embeds: run a manual playhead the user can sync ──
   // We can't read the iframe's internal timecode (cross-origin), so we count
@@ -263,15 +272,15 @@ export function Player() {
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [movie?.id]);
 
-  // ── User sync actions ──
-  // "Sync now": the video just actually started playing, so zero the
-  // effective subtitle time. We do this by setting offset = -playhead.
+  // ── "Start subtitles" ──
+  // Resets the subtitle clock to 0 so cues begin from the top. The user
+  // presses this the moment the video actually starts playing (after the
+  // ads/loading). The clock then ticks forward in step with the video and
+  // pauses automatically when the video is paused.
   const syncSubs = useCallback(() => {
-    setSubOffset(-playheadRef.current);
-  }, []);
-  // Nudge the offset by a few seconds (negative = subtitles later, positive = earlier)
-  const nudgeSubs = useCallback((delta: number) => {
-    setSubOffset((o) => o + delta);
+    playheadRef.current = 0;
+    setSubPlayhead(0);
+    setSubOffset(0);
   }, []);
 
   // ── Update active subtitle cue ──
@@ -468,19 +477,20 @@ export function Player() {
         </div>
       )}
 
-      {/* ── Subtitle sync control bar ── (iframe embeds only)
-          Because we can't read the embed's real timecode, the user syncs
-          manually: hit "Sync" the moment the video actually starts playing
-          (after the ads/loading), then nudge ±5s if it drifts. */}
+      {/* ── Панель керування субтитрами ── (лише для iframe-вставок)
+          Оскільки ми не можемо зчитувати реальний час відтворення з iframe
+          (іншоorigin), користувач запускає субтитри вручну: чекає, поки
+          відео реально почне грати, потім натискає «Запустити субтитри».
+          Годинник іде від 0 і призупиняється, коли відео на паузі. */}
       {!isDirectVideo && !noStream && !videoError && subtitleCues.length > 0 && !finished && (
         <div
           className="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-ink/95 to-transparent px-4 pb-4 pt-10 sm:px-8"
         >
-          <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-center gap-2 sm:gap-3">
-            {/* CC on/off */}
+          <div className="mx-auto flex max-w-2xl flex-wrap items-center justify-center gap-3">
+            {/* Увімк/Вимк субтитри */}
             <button
               onClick={() => setSubsEnabled(!subsEnabled)}
-              aria-label={subsEnabled ? "Disable subtitles" : "Enable subtitles"}
+              aria-label={subsEnabled ? "Вимкнути субтитри" : "Увімкнути субтитри"}
               className={cn(
                 "flex h-9 items-center gap-1.5 rounded-full border px-3 font-sans text-xs font-medium transition-colors",
                 subsEnabled
@@ -489,53 +499,25 @@ export function Player() {
               )}
             >
               <Captions className="h-4 w-4" />
-              {subsEnabled ? "On" : "Off"}
+              {subsEnabled ? "Увімк" : "Вимк"}
             </button>
 
-            {/* The big sync button — hit this when the video actually starts */}
+            {/* Запустити субтитри — обнуляє годинник, щоб репліки почались спочатку */}
             <button
               onClick={syncSubs}
               className="flex h-9 items-center gap-1.5 rounded-full bg-glow px-4 font-sans text-xs font-semibold text-ink transition-transform hover:scale-105"
-              title="Press this the moment the video actually starts playing — it lines the subtitles up"
             >
               <RotateCcw className="h-3.5 w-3.5" />
-              Sync to video
+              Запустити субтитри
             </button>
 
-            {/* Nudge buttons */}
-            <button
-              onClick={() => nudgeSubs(-5)}
-              className="flex h-9 items-center gap-1 rounded-full border border-hairline bg-ink/60 px-3 font-mono text-xs text-bone transition-colors hover:border-glow/40 hover:text-glow-soft"
-              title="Subtitles 5s later"
-            >
-              −5s
-            </button>
-            <button
-              onClick={() => nudgeSubs(5)}
-              className="flex h-9 items-center gap-1 rounded-full border border-hairline bg-ink/60 px-3 font-mono text-xs text-bone transition-colors hover:border-glow/40 hover:text-glow-soft"
-              title="Subtitles 5s earlier"
-            >
-              +5s
-            </button>
-
-            {/* Current effective subtitle time */}
-            <div className="flex h-9 items-center gap-2 rounded-full border border-hairline bg-ink/60 px-3 font-mono text-[11px] tabular-nums text-bone/70">
-              <span className="text-ash">sub</span>
-              {formatTime(Math.max(0, subPlayhead + subOffset))}
-              {subOffset !== 0 && (
-                <span className={subOffset < 0 ? "text-glow-soft" : "text-oxblood"}>
-                  ({subOffset > 0 ? "+" : ""}{subOffset}s)
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Hint text — only shows before the first sync */}
-          {subOffset === 0 && subPlayhead < 3 && (
-            <p className="mt-2 text-center font-sans text-[11px] text-glow-soft/80">
-              Wait for the video to actually start playing, then hit <span className="font-semibold">Sync to video</span> to line up the subtitles.
+            {/* Коротке пояснення поруч із кнопкою */}
+            <p className="max-w-xs text-center font-sans text-[11px] leading-snug text-ash sm:text-left">
+              Дочекайтеся, поки відео почне відтворюватися, потім натисніть{" "}
+              <span className="text-glow-soft">Запустити субтитри</span>. Вони
+              призупиняються, коли ви ставите відео на паузу.
             </p>
-          )}
+          </div>
         </div>
       )}
 
