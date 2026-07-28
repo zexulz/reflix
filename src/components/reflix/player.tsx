@@ -478,46 +478,59 @@ export function Player() {
       )}
 
       {/* ── Панель керування субтитрами ── (лише для iframe-вставок)
-          Оскільки ми не можемо зчитувати реальний час відтворення з iframe
-          (іншоorigin), користувач запускає субтитри вручну: чекає, поки
-          відео реально почне грати, потім натискає «Запустити субтитри».
-          Годинник іде від 0 і призупиняється, коли відео на паузі. */}
-      {!isDirectVideo && !noStream && !videoError && subtitleCues.length > 0 && !finished && (
+          Завжди видимий в українській мові, щоб користувач завжди бачив
+          кнопку. Якщо субтитри не завантажені — показуємо повідомлення. */}
+      {!isDirectVideo && !noStream && !videoError && subsAllowed && !finished && (
         <div
           className="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-ink/95 to-transparent px-4 pb-4 pt-10 sm:px-8"
         >
-          <div className="mx-auto flex max-w-2xl flex-wrap items-center justify-center gap-3">
-            {/* Увімк/Вимк субтитри */}
-            <button
-              onClick={() => setSubsEnabled(!subsEnabled)}
-              aria-label={subsEnabled ? "Вимкнути субтитри" : "Увімкнути субтитри"}
-              className={cn(
-                "flex h-9 items-center gap-1.5 rounded-full border px-3 font-sans text-xs font-medium transition-colors",
-                subsEnabled
-                  ? "border-glow/50 bg-glow/15 text-glow"
-                  : "border-hairline bg-ink/60 text-bone/60 hover:text-bone"
-              )}
-            >
-              <Captions className="h-4 w-4" />
-              {subsEnabled ? "Увімк" : "Вимк"}
-            </button>
+          {subtitleCues.length > 0 ? (
+            <div className="mx-auto flex max-w-2xl flex-wrap items-center justify-center gap-3">
+              {/* Увімк/Вимк субтитри */}
+              <button
+                onClick={() => setSubsEnabled(!subsEnabled)}
+                aria-label={subsEnabled ? "Вимкнути субтитри" : "Увімкнути субтитри"}
+                className={cn(
+                  "flex h-9 items-center gap-1.5 rounded-full border px-3 font-sans text-xs font-medium transition-colors",
+                  subsEnabled
+                    ? "border-glow/50 bg-glow/15 text-glow"
+                    : "border-hairline bg-ink/60 text-bone/60 hover:text-bone"
+                )}
+              >
+                <Captions className="h-4 w-4" />
+                {subsEnabled ? "Увімк" : "Вимк"}
+              </button>
 
-            {/* Запустити субтитри — обнуляє годинник, щоб репліки почались спочатку */}
-            <button
-              onClick={syncSubs}
-              className="flex h-9 items-center gap-1.5 rounded-full bg-glow px-4 font-sans text-xs font-semibold text-ink transition-transform hover:scale-105"
-            >
-              <RotateCcw className="h-3.5 w-3.5" />
-              Запустити субтитри
-            </button>
+              {/* Запустити субтитри */}
+              <button
+                onClick={syncSubs}
+                className="flex h-9 items-center gap-1.5 rounded-full bg-glow px-4 font-sans text-xs font-semibold text-ink transition-transform hover:scale-105"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                Запустити субтитри
+              </button>
 
-            {/* Коротке пояснення поруч із кнопкою */}
-            <p className="max-w-xs text-center font-sans text-[11px] leading-snug text-ash sm:text-left">
-              Дочекайтеся, поки відео почне відтворюватися, потім натисніть{" "}
-              <span className="text-glow-soft">Запустити субтитри</span>. Вони
-              призупиняються, коли ви ставите відео на паузу.
-            </p>
-          </div>
+              <p className="max-w-xs text-center font-sans text-[11px] leading-snug text-ash sm:text-left">
+                Дочекайтеся, поки відео почне відтворюватися, потім натисніть{" "}
+                <span className="text-glow-soft">Запустити субтитри</span>. Вони
+                призупиняються, коли ви ставите відео на паузу.
+              </p>
+            </div>
+          ) : (
+            /* No subtitle attached for this title — still show the bar so the
+               user knows the feature exists and what to do about it. */
+            <div className="mx-auto flex max-w-2xl flex-wrap items-center justify-center gap-3">
+              <div className="flex h-9 items-center gap-1.5 rounded-full border border-hairline bg-ink/60 px-3 font-sans text-xs font-medium text-bone/40">
+                <Captions className="h-4 w-4" />
+                Субтитри
+              </div>
+              <p className="max-w-sm text-center font-sans text-[11px] leading-snug text-ash sm:text-left">
+                Для цього титулу ще немає субтитрів. Куратор може завантажити
+                файл <span className="font-mono text-glow-soft">.srt</span> через
+                Панель куратора → Завантажити субтитри.
+              </p>
+            </div>
+          )}
         </div>
       )}
 
